@@ -1,0 +1,90 @@
+#!/bin/bash
+# Build the colour variants of the Cyberpunk 2077 theme as sibling Omarchy
+# themes, so they show up in Omarchy's own theme picker next to the original:
+#
+#   cyberpunk-2077            coral text, cyan highlights (the in-game computers)
+#   cyberpunk-2077-netrunner  cyan text, coral highlights (scanner / netrunner UI)
+#   cyberpunk-2077-samurai    yellow text, cyan highlights (the Samurai / box-art look)
+#
+# Each variant is a copy of the theme with its colours swapped, and shares the
+# official wallpapers downloaded for the original. Re-run after updating the
+# theme with git pull.
+#
+#   cyberpunk-variants                build or refresh both variants
+#   cyberpunk-variants --remove       delete them
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+THEMES="$HOME/.config/omarchy/themes"
+BACKGROUNDS="$HOME/.config/omarchy/backgrounds"
+VARIANTS=(netrunner samurai)
+# Everything else in the repo is tooling, docs or fonts, not theme files.
+THEME_FILES=(backgrounds btop.theme chromium.theme colors.toml icons.theme keyboard.rgb unlock.png shell.*.toml)
+
+case ${1:-} in
+  --remove)
+    for v in "${VARIANTS[@]}"; do
+      rm -rf "${THEMES:?}/cyberpunk-2077-$v"
+      [[ -L $BACKGROUNDS/cyberpunk-2077-$v ]] && rm "$BACKGROUNDS/cyberpunk-2077-$v"
+    done
+    exit 0
+    ;;
+  -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "Unknown option: $1" >&2; exit 1 ;;
+esac
+
+mkdir -p "$BACKGROUNDS/cyberpunk-2077"
+
+for v in "${VARIANTS[@]}"; do
+  dest="$THEMES/cyberpunk-2077-$v"
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  (cd "$THEME_DIR" && cp -r "${THEME_FILES[@]}" "$dest/")
+  python3 -I - "$v" "$dest" <<'PY'
+import pathlib, re, sys
+
+variant, dest = sys.argv[1], pathlib.Path(sys.argv[2])
+
+# Old colour -> new colour, applied in one pass so swaps don't chain.
+MAPS = {
+    "netrunner": {
+        # coral text family <-> cyan highlight family
+        "FF6159": "5EF6FF", "A3463F": "2C9CA5", "FF8C82": "A8FBFF", "7D4446": "2E6A70",
+        "5EF6FF": "FF6159", "A8FBFF": "FF8C82",
+        "10353A": "2A1418", "2A1418": "10353A", "14454B": "3A1A20",
+        # panels and frames lean teal instead of oxblood
+        "1C1016": "0E1C20", "5A1E24": "17474D", "0D0B10": "0A0D10",
+    },
+    "samurai": {
+        "FF6159": "F3E600", "A3463F": "9C9300", "FF8C82": "FFF35C", "7D4446": "6B661E",
+        # the bar's yellow "active" marker would vanish into yellow text
+        "F3E600": "FF003C",
+        "1C1016": "1A1808", "2A1418": "2E2B0A", "5A1E24": "4A4510", "0D0B10": "0C0B08",
+    },
+}
+mapping = MAPS[variant]
+hexre = re.compile(r"(?<![0-9A-Fa-f])(" + "|".join(mapping) + r")(?![0-9A-Fa-f])", re.I)
+swap = lambda text: hexre.sub(lambda m: mapping[m.group(1).upper()], text)
+
+# In colors.toml only the UI roles change; the 16 ANSI colours stay put so
+# cyan is still cyan and yellow still yellow in ls, git and editors.
+ROLES = {"accent", "cursor", "background", "dark_background", "darker_background",
+         "lighter_background", "foreground", "dark_foreground", "light_foreground",
+         "selection", "selection_background", "selection_foreground", "muted",
+         "hyprland_active_border", "hyprland_inactive_border"}
+colors = dest / "colors.toml"
+lines = []
+for line in colors.read_text().splitlines():
+    key = line.split("=", 1)[0].strip()
+    lines.append(swap(line) if key in ROLES else line)
+colors.write_text("\n".join(lines) + "\n")
+
+for path in [dest / "btop.theme", dest / "keyboard.rgb", *dest.glob("shell.*.toml")]:
+    path.write_text(swap(path.read_text()))
+PY
+  # Share the downloaded official wallpapers with the original theme.
+  [[ -e $BACKGROUNDS/cyberpunk-2077-$v ]] || ln -s cyberpunk-2077 "$BACKGROUNDS/cyberpunk-2077-$v"
+  echo "Built cyberpunk-2077-$v"
+done

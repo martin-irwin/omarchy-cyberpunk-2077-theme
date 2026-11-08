@@ -11,9 +11,11 @@
 #                                   --no-wallpapers to skip)
 #   4. installs the Cyberdeck file browser (Yazi + Night City flavor) on
 #      Super+Alt+Y                                         (--no-cyberdeck to skip)
-#   5. re-applies the theme so the new wallpapers and font show up
+#   5. builds the Netrunner (cyan) and Samurai (yellow) colour variants, which
+#      then appear in Omarchy's theme picker
+#   6. re-applies the theme so the new wallpapers and font show up
 #
-#   ./install.sh --uninstall   undoes 1, 2 and 4 (wallpapers are left in place)
+#   ./install.sh --uninstall   undoes 1, 2, 4 and 5 (wallpapers are left in place)
 
 set -euo pipefail
 
@@ -34,7 +36,7 @@ while (( $# )); do
     --no-wallpapers) wallpapers=none ;;
     --no-cyberdeck) cyberdeck=0 ;;
     --uninstall) uninstall=1 ;;
-    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
   shift
@@ -44,7 +46,8 @@ say() { printf '\e[38;2;94;246;255m::\e[0m \e[38;2;255;97;89m%s\e[0m\n' "$*"; }
 
 if (( uninstall )); then
   say "Removing Cyberdeck launcher and Hyprland extras"
-  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$HYPR_DIR/cyberpunk-2077.lua"
+  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$HYPR_DIR/cyberpunk-2077.lua"
+  "$THEME_DIR/extras/bin/cyberpunk-variants" --remove
   [[ -f $HYPR_DIR/hyprland.lua ]] && sed -i '\#pcall(require, "hypr.cyberpunk-2077")#d' "$HYPR_DIR/hyprland.lua"
 
   if [[ -f $STATE_DIR/previous-font ]]; then
@@ -107,8 +110,15 @@ if (( cyberdeck )); then
   hyprctl reload >/dev/null 2>&1 || true
 fi
 
-# 5. Apply
+# 5. Colour variants
+say "Building the Netrunner and Samurai colour variants"
+ln -sfn "$THEME_DIR/extras/bin/cyberpunk-variants" "$BIN_DIR/cyberpunk-variants"
+"$THEME_DIR/extras/bin/cyberpunk-variants" >/dev/null
+
+# 6. Apply (keeps a variant if one is already in use)
+current_theme=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
+[[ $current_theme == cyberpunk-2077-* ]] || current_theme=cyberpunk-2077
 say "Applying theme"
-omarchy theme set cyberpunk-2077
+omarchy theme set "$current_theme"
 
 say "Wake up, samurai. We have a city to burn."

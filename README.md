@@ -26,6 +26,7 @@ a theme cannot do by itself:
 | Monospace font | `omarchy font set "Share Tech Mono"` (terminal, bar, menus) | `--keep-font` |
 | Wallpapers | Downloads 30 official CDPR wallpapers sized for your monitor | `--no-wallpapers` (or `--all-wallpapers` for 50) |
 | Cyberdeck | Installs Yazi if missing, binds the Cyberdeck file browser to **Super+Alt+Y** | `--no-cyberdeck` |
+| Variants | Builds the Netrunner and Samurai colour variants (see below) | — |
 | Apply | Re-runs `omarchy theme set cyberpunk-2077` | — |
 
 `install.sh --uninstall` removes the fonts, launcher and keybinding and
@@ -36,7 +37,8 @@ restores your previous monospace font. Downloaded wallpapers stay in
 
 ```bash
 git -C ~/.config/omarchy/themes/cyberpunk-2077 pull
-omarchy theme set cyberpunk-2077
+cyberpunk-variants                 # refresh the Netrunner and Samurai variants
+omarchy theme set cyberpunk-2077   # or whichever variant you use
 ```
 
 ## The palette
@@ -56,6 +58,26 @@ coral on black.
 | `background` | `#0D0B10` | Near-black with a red cast |
 | `lighter_background` | `#1C1016` | Dark oxblood panels |
 | `selection_background` | `#10353A` | The dark teal wash behind a cyan selection |
+
+### Colour variants
+
+Coral text is what the computers in the game actually look like: Judy's
+screens, the laptops on desks and the access points all show coral-red text
+on black. That is why the terminal is red. If you'd rather not stare at red
+all day, `install.sh` also builds two variants, which appear in Omarchy's theme
+picker (*Super+Ctrl+Shift+Space*) as their own themes:
+
+| Theme | Text | Highlight | Look |
+|---|---|---|---|
+| Cyberpunk 2077 | coral `#FF6159` | cyan | the in-game computers (default) |
+| Cyberpunk 2077 Netrunner | cyan `#5EF6FF` | coral | scanner / netrunner interface |
+| Cyberpunk 2077 Samurai | yellow `#F3E600` | cyan | the Samurai box-art look |
+
+Variants change only the UI roles (text, highlights, frames, panels). The 16
+terminal colours stay the same, so `ls`, git and editors still read correctly.
+They share the downloaded wallpapers. The variants are generated copies:
+after a `git pull`, run `cyberpunk-variants` to refresh them. The Cyberdeck
+and Telegram theme stay coral.
 
 Where the values come from: CDPR has never published a UI palette. The
 cyan matches the game's default HUD blue as reported by the HUD Painter
