@@ -30,6 +30,11 @@ Panel {
   readonly property string statusFile: String(setting("statusFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
   // Development only: a saved Tailscale API device list (via-host mode).
   readonly property string apiFile: String(setting("apiFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
+  // auto (detect a VM) | vm | metal — passed to jack as JACK_MACHINE
+  readonly property string machine: {
+    var m = String(setting("machine", "auto"))
+    return (m === "vm" || m === "metal") ? m : "auto"
+  }
 
   property var net: ({ self: { name: "", ip: "", state: "" }, peers: [] })
   property bool loaded: false
@@ -41,20 +46,26 @@ Panel {
   readonly property int online: Model.onlineCount(net && net.peers ? net.peers : [])
   readonly property string selfIp: net && net.self ? net.self.ip : ""
   readonly property string tsState: net && net.self ? net.self.state : ""
-  // Via host: this machine reaches the tailnet through its host (a VM behind
-  // a Mac, say) and jack reads the machine list from the Tailscale API.
+  // A VM (this machine runs inside one, unless the "machine" setting says
+  // otherwise) normally reaches the tailnet through its host's Tailscale.
+  // Then jack reads the machine list from the Tailscale API (ViaHost) when a
+  // read-only credential is set up, or has nothing to list (ViaHostNoApi).
+  // Real installs get the full local Tailscale experience.
+  readonly property bool isVm: net && net.self ? net.self.vm === true : false
   readonly property bool viaHost: tsState === "ViaHost"
+  readonly property bool viaHostNoApi: tsState === "ViaHostNoApi"
   readonly property bool viaHostError: tsState === "ViaHostError"
   readonly property bool onLocalTailnet: tsState === "Running" && selfIp !== ""
   readonly property bool connected: onLocalTailnet || viaHost
   readonly property bool needsLogin: tsState === "NeedsLogin" || tsState === "NeedsMachineAuth"
   readonly property bool missing: tsState === "Missing"
 
-  // Bar text, read by BarWidget.qml
-  readonly property string label: !loaded ? "TSNET …"
+  // Bar text, read by BarWidget.qml. Empty hides the widget: on a VM that
+  // isn't on the tailnet itself there's no TSNET address to show, and the
+  // host badge (or Super+G) opens the panel instead.
+  readonly property string label: !loaded ? ""
     : onLocalTailnet ? "TSNET " + selfIp
-    : viaHost ? "TSNET VIA HOST"
-    : viaHostError ? "TSNET API ERR"
+    : isVm ? ""
     : missing ? "TSNET N/A"
     : needsLogin ? "TSNET LOGIN"
     : "TSNET OFF"
@@ -163,8 +174,12 @@ Panel {
   Process {
     id: statusProc
     command: [root.jackPath, "--json"].concat(root.watch)
-    environment: root.statusFile !== "" ? ({ "JACK_STATUS_FILE": root.statusFile })
-               : root.apiFile !== "" ? ({ "JACK_API_FILE": root.apiFile }) : ({})
+    environment: {
+      var env = { "JACK_MACHINE": root.machine }
+      if (root.statusFile !== "") env["JACK_STATUS_FILE"] = root.statusFile
+      else if (root.apiFile !== "") env["JACK_API_FILE"] = root.apiFile
+      return env
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -215,7 +230,7 @@ Panel {
       onMoveRequested: function(dx, dy) { if (dy !== 0) root.move(dy) }
       onReturnRequested: {
         if (root.connected) root.jackIn(root.rows[root.selected])
-        else if (!root.missing && !root.switching) root.setConnected(true)
+        else if (!root.isVm && !root.missing && !root.switching) root.setConnected(true)
       }
 
       Column {
@@ -255,6 +270,7 @@ Panel {
           textFormat: Text.PlainText
           text: !root.loaded ? "Scanning the net…"
               : root.viaHostError ? "Couldn't read your tailnet from the Tailscale API. Check ~/.config/jack/tailscale-oauth (run: jack --api-check)."
+              : root.viaHostNoApi ? "This VM reaches the tailnet through its host, so there's no machine list here. Jack in by address (jack 100.x.y.z), or add a read-only Tailscale API credential to list machines (see the theme README)."
               : root.missing ? "Tailscale isn't installed on this deck."
               : root.needsLogin ? "This deck isn't logged in to your tailnet."
               : !root.connected ? "This deck is off the tailnet."
@@ -267,7 +283,9 @@ Panel {
         // Big CONNECT / LOG IN button when this machine is off the tailnet
         Rectangle {
           id: connectButton
-          visible: root.loaded && !root.connected && !root.missing && !root.viaHostError
+          // Real installs only: a VM uses its host's tunnel, so there's
+          // nothing on this machine to connect.
+          visible: root.loaded && !root.isVm && !root.connected && !root.missing
           width: parent.width
           height: Style.spacing.popupRowHeight
           radius: 0

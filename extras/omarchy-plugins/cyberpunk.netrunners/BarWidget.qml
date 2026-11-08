@@ -25,8 +25,11 @@ BarWidget {
   function close() { if (panelLoader.item) panelLoader.item.close() }
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
 
-  visible: displayText !== ""
-  implicitWidth: button.implicitWidth
+  // With no label (a VM using its host's Tailscale) the widget collapses to
+  // zero width but stays on the bar: it's still where the panel opens from
+  // when the host badge or Super+G asks for it.
+  readonly property bool shown: displayText !== ""
+  implicitWidth: shown ? button.implicitWidth : 0
   implicitHeight: button.implicitHeight
 
   onBarChanged: injectPanel()
@@ -46,6 +49,7 @@ BarWidget {
   WidgetButton {
     id: button
     anchors.fill: parent
+    visible: root.shown
     bar: root.bar
     text: root.vertical ? "TS" : root.displayText
     // cyan like kuroshi's TSNET readout (follows the theme's accent)

@@ -19,8 +19,10 @@ function parse(text) {
   if (data.self) out.self = {
     name: cleanName(data.self.name),
     ip: cleanIp(data.self.ip),
-    // Running | Stopped | NeedsLogin | NeedsMachineAuth | Starting | NoState | Missing
-    state: String(data.self.state || "").replace(/[^A-Za-z]/g, "").slice(0, 20)
+    // Running | Stopped | NeedsLogin | NeedsMachineAuth | Starting | NoState |
+    // Missing | ViaHost | ViaHostNoApi | ViaHostError
+    state: String(data.self.state || "").replace(/[^A-Za-z]/g, "").slice(0, 20),
+    vm: data.self.vm === true
   }
   var peers = Array.isArray(data.peers) ? data.peers.slice(0, 200) : []
   for (var i = 0; i < peers.length; i++) {

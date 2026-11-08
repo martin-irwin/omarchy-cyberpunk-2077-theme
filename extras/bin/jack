@@ -90,15 +90,34 @@ api_status() {
         | to_entries | map({ key: ("api:" + (.key | tostring)), value }) | from_entries) }' <<<"$devices"
 }
 
-# Where host data comes from: a saved file (tests), local Tailscale when this
-# machine is on the tailnet itself, else the API when credentials are set up.
+# Is this machine a VM? VMs usually reach the tailnet through their host's
+# Tailscale, so they get via-host behaviour; real installs get the full local
+# Tailscale experience. JACK_MACHINE=vm|metal overrides the detection.
+is_vm() {
+  case ${JACK_MACHINE:-auto} in
+    vm) return 0 ;;
+    metal) return 1 ;;
+    *) systemd-detect-virt -q 2>/dev/null ;;
+  esac
+}
+
+# Where host data comes from:
+#   a saved file (tests)
+#   local Tailscale, when this machine is on the tailnet itself
+#   on a VM that isn't: the Tailscale API if credentials are set up
+#     (ViaHost), else nothing to list (ViaHostNoApi: it just uses the tunnel)
+#   on a real install that isn't: local Tailscale's state (LOGIN / OFF)
 ts_status() {
   if [[ -n ${JACK_STATUS_FILE:-} ]]; then cat "$JACK_STATUS_FILE"; return; fi
   local local_json="" state=""
   command -v tailscale >/dev/null && local_json=$(tailscale status --json 2>/dev/null)
   state=$(jq -r '.BackendState // ""' <<<"$local_json" 2>/dev/null)
-  if [[ $state != Running ]] && have_api; then
-    api_status || echo '{"BackendState":"ViaHostError"}'
+  if [[ $state != Running ]] && is_vm; then
+    if have_api; then
+      api_status || echo '{"BackendState":"ViaHostError"}'
+    else
+      echo '{"BackendState":"ViaHostNoApi"}'
+    fi
     return
   fi
   printf '%s' "$local_json"
@@ -154,7 +173,9 @@ refresh_uptime() {
 json() {
   local watch=" $* " now self_ip self_name state first=1 name ip os online seen f age up
   now=$(date +%s)
-  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null && ! have_api; then
+  local vm=false
+  is_vm && vm=true
+  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null && [[ $vm == false ]]; then
     state=Missing
   else
     # fields tab-separated so an empty name or IP can't shift the others
@@ -162,9 +183,10 @@ json() {
       [(.BackendState // "NoState"), (.Self // {} | nodename), ((.Self.TailscaleIPs // [])[0] // "")] | @tsv' 2>/dev/null)
     state=${state:-Stopped}
   fi
+  [[ -n $self_name ]] || self_name=$(hostname | tr '[:upper:]' '[:lower:]')
 
-  printf '{"self":{"name":"%s","ip":"%s","state":"%s"},"peers":[' \
-    "${self_name//[^a-z0-9-]/}" "${self_ip//[^0-9a-f.:]/}" "${state//[^A-Za-z]/}"
+  printf '{"self":{"name":"%s","ip":"%s","state":"%s","vm":%s},"peers":[' \
+    "${self_name//[^a-z0-9-]/}" "${self_ip//[^0-9a-f.:]/}" "${state//[^A-Za-z]/}" "$vm"
   while IFS=$'\t' read -r name ip os online seen; do
     up=""
     if [[ $online == true && $watch == *" $name "* ]]; then
@@ -246,7 +268,12 @@ tailnet_down() {
 
 connect() {
   local name ip _rest user
-  IFS=$'\t' read -r name ip _rest < <(hosts | awk -F'\t' -v n="$1" '$1 == n || index($1, n) == 1 { print; exit }')
+  if [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+    # a bare address: no host list needed (a VM using its host's tunnel)
+    name=$1 ip=$1
+  else
+    IFS=$'\t' read -r name ip _rest < <(hosts | awk -F'\t' -v n="$1" '$1 == n || index($1, n) == 1 { print; exit }')
+  fi
   if [[ -z $ip ]]; then
     printf '\e[31m✕ NO ROUTE TO %s\e[0m — not on the tailnet (jack --list)\n' "${1^^}" >&2
     return 1

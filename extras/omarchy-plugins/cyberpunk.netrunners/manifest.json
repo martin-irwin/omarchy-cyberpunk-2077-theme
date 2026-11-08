@@ -20,9 +20,16 @@
     "allowMultiple": false,
     "defaults": {
       "watch": [],
-      "refreshIntervalSec": 60
+      "refreshIntervalSec": 60,
+      "machine": "auto"
     },
     "schema": [
+      {
+        "key": "machine",
+        "type": "string",
+        "label": "This machine: auto (detect a VM), vm (uses its host's Tailscale) or metal (its own Tailscale)",
+        "defaultValue": "auto"
+      },
       {
         "key": "watch",
         "type": "array",
