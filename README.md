@@ -364,6 +364,41 @@ stays cream; you only see it once. If a Ferdium update resets the WhatsApp
 recipe, re-run `cyberpunk-ferdium`. The skin also works in a browser with a
 user-CSS extension such as Stylus on `web.whatsapp.com`.
 
+## Android: Telegram and wallpapers
+
+### Telegram for Android
+
+`extras/android/night-city.attheme` is the Telegram Desktop theme's twin:
+the same palette and the same role mapping, built from Telegram Android's own
+night theme so all ~600 colour keys are covered. Their messages are coral on
+dark oxblood, yours cyan on dark teal, notices gig-yellow, with the Cyberphone
+grid and scanlines as the chat background.
+
+Send the file to yourself on Telegram (Saved Messages), tap it, then
+**Apply**. For the square HUD look, slide **Settings → Chat Settings →
+Message corners** all the way left. Telegram can't change fonts.
+
+Rebuild it with `build-attheme.py`, whose header says where to get
+Telegram's night theme.
+
+### Phone wallpapers
+
+`extras/android/phone-art.py` lays the node wallpaper out for a phone. Tall
+screens stack it and keep the top third clear for the lock-screen clock;
+square ones (a foldable's inner screen) put the NODE panel beside the title:
+
+```bash
+cd extras/android
+python3 phone-art.py wallpaper cover.png ../../fonts 1116 2376 \
+  --title "FIND N5" --fact "DEVICE=OPPO FIND N5" --fact "OS=ANDROID" --fact "TSNET=100.x.y.z"
+python3 phone-art.py wallpaper inner.png ../../fonts 2480 2248 --title "FIND N5" --fact …
+```
+
+WhatsApp on Android can't be themed beyond dark mode and a wallpaper (modded
+clients get accounts banned). The full Night City skin needs WhatsApp Web
+with `extras/whatsapp/night-city.css` (Firefox for Android with Stylus), as a
+linked device.
+
 ## Decisions made while building this
 
 - **Coral, not yellow, is the lead colour.** Most community Cyberpunk themes
