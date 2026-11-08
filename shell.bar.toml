@@ -1,0 +1,10 @@
+[bar]
+# Status bar: a Kiroshi HUD strip. Near-black, coral text, gig-yellow for
+# anything demanding attention (recording, updates, alerts).
+background       = "#040306"
+background-alpha = 0.92
+text             = "#FF6159"
+active           = "#F3E600"
+scale-with-font  = true
+size-horizontal  = 26
+size-vertical    = 28

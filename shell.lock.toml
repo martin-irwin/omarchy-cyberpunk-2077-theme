@@ -1,0 +1,14 @@
+[lock]
+# Lock screen password field: coral frame, cyan while you type, alarm red
+# on a wrong password.
+background       = "#08070B"
+background-alpha = 0.85
+text             = "#5EF6FF"
+placeholder      = "#7D4446"
+text-error       = "#FF003C"
+border           = "hyprland.active-border"
+border-active    = "#5EF6FF"
+border-error     = "#FF003C"
+border-alpha     = 1.0
+selection        = "#5EF6FF"
+selection-alpha  = 0.35

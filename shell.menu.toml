@@ -1,0 +1,15 @@
+[menu]
+# Like a terminal menu on a Night City computer: coral list, the cursor row
+# turns cyan on a dark teal wash.
+background                = "#0D0B10"
+background-alpha          = 1.0
+text                      = "#FF6159"
+border                    = "hyprland.active-border"
+border-alpha              = 1.0
+scrim                     = "#040306"
+scrim-alpha               = 0.6
+selected-background       = "#5EF6FF"
+selected-background-alpha = 0.12
+selected-text             = "#5EF6FF"
+selected-border           = "#5EF6FF"
+selected-border-alpha     = 0.8

@@ -1,0 +1,132 @@
+#!/bin/bash
+# Download the official Cyberpunk 2077 wallpapers from CD Projekt RED's own
+# media API (the one behind cyberpunk.net's gallery) into
+# ~/.config/omarchy/backgrounds/cyberpunk-2077/, where Omarchy picks them up
+# for this theme. The theme repo itself carries no CDPR artwork.
+#
+#   cyberpunk-wallpapers            the core set (characters, Phantom Liberty, districts)
+#   cyberpunk-wallpapers --all      also posters, gangs and Edgerunners
+#   cyberpunk-wallpapers --res 2560x1440   force a resolution
+#   cyberpunk-wallpapers --list     show what would be downloaded
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+LIST="$THEME_DIR/wallpapers.tsv"
+DEST="$HOME/.config/omarchy/backgrounds/cyberpunk-2077"
+API="https://www.cyberpunk.net/api/open/media"
+UA="Mozilla/5.0 (X11; Linux x86_64) omarchy-cyberpunk-2077-theme"
+
+sets="core"
+res=""
+list_only=0
+
+while (( $# )); do
+  case $1 in
+    --all) sets="core extra" ;;
+    --res) res="$2"; shift ;;
+    --list) list_only=1 ;;
+    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+# Largest connected monitor, rotated to landscape, unless --res was given.
+if [[ -z $res ]] && command -v hyprctl >/dev/null && hyprctl monitors -j >/dev/null 2>&1; then
+  res=$(hyprctl monitors -j | python3 -I -c '
+import json, sys
+ms = json.load(sys.stdin)
+w, h = max(((max(m["width"], m["height"]), min(m["width"], m["height"])) for m in ms), key=lambda s: s[0] * s[1])
+print(f"{w}x{h}")')
+fi
+res=${res:-3840x2160}
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+# One API call per service; the gallery lists every wallpaper on one page.
+for service in $(grep -v '^#' "$LIST" | cut -f2 | sort -u); do
+  curl -fsSL -A "$UA" "$API/$service?locale=en&type=wallpaper&page=1&limit=500" -o "$tmp/$service.json"
+done
+
+python3 -I - "$LIST" "$tmp" "$res" "$sets" >"$tmp/plan.tsv" <<'PY'
+import json, sys
+list_path, tmp, res, sets = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4].split()
+want_w, want_h = map(int, res.lower().split("x"))
+want_ratio = want_w / want_h
+
+def pick(full):
+    sizes = []
+    for key, url in full.items():
+        try:
+            w, h = map(int, key.split("x"))
+        except ValueError:
+            continue
+        if w > h:
+            sizes.append((w, h, url))
+    if not sizes:
+        return None
+    same = [s for s in sizes if abs(s[0] / s[1] - want_ratio) < 0.03]
+    pool = same or sizes
+    big_enough = [s for s in pool if s[0] >= want_w and s[1] >= want_h]
+    if big_enough:
+        return min(big_enough, key=lambda s: s[0] * s[1])
+    return max(pool, key=lambda s: s[0] * s[1])
+
+media = {}
+for line in open(list_path):
+    if line.startswith("#") or not line.strip():
+        continue
+    id_, service, set_, name = line.rstrip("\n").split("\t")
+    if set_ not in sets:
+        continue
+    if service not in media:
+        data = json.load(open(f"{tmp}/{service}.json"))["data"]
+        media[service] = {item["id"]: item for item in data}
+    item = media[service].get(int(id_))
+    if not item:
+        print(f"missing\t{name}\t\t", flush=True)
+        continue
+    choice = pick(item["data"]["resolutions"].get("full", {}))
+    if not choice:
+        print(f"missing\t{name}\t\t", flush=True)
+        continue
+    w, h, url = choice
+    ext = url.rsplit(".", 1)[-1].split("?")[0].lower()
+    ext = "jpg" if ext == "jpeg" else ext
+    print(f"ok\t{name}.{ext}\t{w}x{h}\t{url}")
+PY
+
+if (( list_only )); then
+  column -t -s $'\t' "$tmp/plan.tsv"
+  exit 0
+fi
+
+mkdir -p "$DEST"
+echo "Fetching official wallpapers for a ${res} screen into $DEST"
+
+got=0 skipped=0 failed=0
+while IFS=$'\t' read -r status file size url; do
+  if [[ $status != ok ]]; then
+    echo "  ! $file is no longer listed by cyberpunk.net"
+    failed=$((failed + 1))
+    continue
+  fi
+  if [[ -s $DEST/$file ]]; then
+    skipped=$((skipped + 1))
+    continue
+  fi
+  printf '  > %-40s %s\n' "$file" "$size"
+  if curl -fsSL -A "$UA" "$url" -o "$DEST/$file.part"; then
+    mv "$DEST/$file.part" "$DEST/$file"
+    got=$((got + 1))
+  else
+    rm -f "$DEST/$file.part"
+    echo "  ! download failed: $url"
+    failed=$((failed + 1))
+  fi
+done <"$tmp/plan.tsv"
+
+echo "Done: $got downloaded, $skipped already present, $failed unavailable."
+echo "Cycle them with: omarchy theme bg next   (or Super+Ctrl+Space)"

@@ -1,0 +1,3 @@
+# CDPR wallpapers are downloaded, never committed
+*.part
+__pycache__/

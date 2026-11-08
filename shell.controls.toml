@@ -1,0 +1,29 @@
+[controls]
+# In Night City UIs the row under your cursor lights up cyan; chosen items
+# get a solid cyan wash. Idle chrome is a thin coral outline.
+normal-color        = "#FF6159"
+normal-fill-alpha   = 0.04
+normal-border       = "#FF6159"
+normal-border-width = 1
+normal-border-alpha = 0.45
+
+hover-cursor-color        = "#5EF6FF"
+hover-cursor-fill-alpha   = 0.10
+hover-cursor-border       = "#5EF6FF"
+hover-cursor-border-width = 1
+hover-cursor-border-alpha = 0.70
+
+focus-color        = "#5EF6FF"
+focus-fill-alpha   = 0.10
+focus-border       = "#5EF6FF"
+focus-border-width = 1
+focus-border-alpha = 0.70
+
+selected-color        = "#5EF6FF"
+selected-fill-alpha   = 0.16
+selected-border       = "#5EF6FF"
+selected-border-width = 1
+selected-border-alpha = 1.0
+
+pressed-fill-alpha   = 0.26
+selection-fill-alpha = 0.35

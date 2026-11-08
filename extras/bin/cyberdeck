@@ -1,0 +1,16 @@
+#!/bin/bash
+# Cyberdeck: a Night City computer file browser. Opens Yazi in its own
+# floating terminal with the theme's "night-city" flavor, without touching
+# your normal ~/.config/yazi setup.
+#
+#   cyberdeck [dir]
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+
+if ! command -v yazi >/dev/null; then
+  notify-send -u critical "CYBERDECK OFFLINE" "Yazi is not installed. Run: omarchy pkg add yazi"
+  exit 1
+fi
+
+export YAZI_CONFIG_HOME="$THEME_DIR/extras/yazi"
+exec omarchy-launch-tui --app-id=cyberdeck.files yazi "${1:-$HOME}"

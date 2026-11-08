@@ -1,0 +1,20 @@
+#:schema https://yazi-rs.github.io/schemas/yazi.json
+# Cyberdeck file browser: three panes like the in-game computers' nav /
+# list / detail layout.
+[mgr]
+ratio          = [ 1, 3, 4 ]
+sort_by        = "natural"
+sort_dir_first = true
+linemode       = "size"
+show_hidden    = false
+show_symlink   = true
+
+# Prompts phrased like a Night City terminal.
+[input]
+cd_title     = "JACK IN // PATH:"
+create_title = [ "NEW SHARD:", "NEW DIRECTORY:" ]
+rename_title = "REWRITE ID:"
+filter_title = "FILTER:"
+find_title   = [ "SCAN FWD:", "SCAN BACK:" ]
+search_title = "DEEP SCAN via {n}:"
+shell_title  = [ "EXEC:", "EXEC (block):" ]

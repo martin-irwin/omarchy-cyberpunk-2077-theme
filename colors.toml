@@ -1,0 +1,49 @@
+# Cyberpunk 2077 — Night City terminal palette.
+#
+# Built from the in-game UI rather than the marketing yellow:
+#   coral HUD red  #FF6159  every menu, panel and computer screen in Night City
+#   netrunner cyan #5EF6FF  selected / focused / hovered items
+#   gig yellow     #F3E600  quest, gig and warning markers
+#   alarm red      #FF003C  combat, damage, errors
+# Backgrounds are near-black with a faint red cast, like the screens in
+# Judy's apartment and the laptops scattered around the city.
+mode = "dark"
+
+accent = "#5EF6FF"
+cursor = "#5EF6FF"
+
+background = "#0D0B10"
+dark_background = "#08070B"
+darker_background = "#040306"
+lighter_background = "#1C1016"
+
+foreground = "#FF6159"
+dark_foreground = "#A3463F"
+light_foreground = "#FF8C82"
+bright_foreground = "#F2EBE6"
+
+selection = "#2A1418"
+selection_background = "#10353A"
+selection_foreground = "#5EF6FF"
+muted = "#7D4446"
+
+red = "#FF003C"
+yellow = "#F3E600"
+orange = "#FF8A3D"
+green = "#1EF2A0"
+cyan = "#5EF6FF"
+blue = "#3FA9FF"
+magenta = "#C34DFF"
+brown = "#7A2C24"
+
+bright_red = "#FF4D6D"
+bright_yellow = "#FFF35C"
+bright_green = "#6BFFC3"
+bright_cyan = "#A8FBFF"
+bright_blue = "#8CCBFF"
+bright_magenta = "#DD8CFF"
+
+# Window frames: coral like the in-game panels, dim oxblood when unfocused.
+# The lock screen, notifications and popups follow the active border.
+hyprland_active_border = "rgb(FF6159)"
+hyprland_inactive_border = "rgba(5A1E24AA)"

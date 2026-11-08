@@ -1,0 +1,12 @@
+[polkit]
+# Authentication prompt: an ICE breach dialog.
+background       = "#0D0B10"
+background-alpha = 1.0
+text             = "#FF6159"
+text-error       = "#FF003C"
+border           = "hyprland.active-border"
+border-error     = "#FF003C"
+border-alpha     = 1.0
+scrim            = "#040306"
+scrim-alpha      = 0.7
+accent           = "#5EF6FF"

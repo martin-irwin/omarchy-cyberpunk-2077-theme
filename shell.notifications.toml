@@ -1,0 +1,8 @@
+[notifications]
+# Incoming message / gig toast.
+background       = "#0D0B10"
+background-alpha = 0.96
+text             = "#FF6159"
+border           = "hyprland.active-border"
+border-alpha     = 1.0
+countdown        = "#5EF6FF"

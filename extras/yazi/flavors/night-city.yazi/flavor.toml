@@ -1,0 +1,139 @@
+# Night City — a Yazi flavor styled after the computers in Cyberpunk 2077:
+# coral list on near-black, the row under the cursor lit cyan on dark teal,
+# gig-yellow for selections, alarm red for cuts and errors.
+#:schema https://yazi-rs.github.io/schemas/theme.json
+
+[app]
+overall = { bg = "#0D0B10" }
+
+[mgr]
+cwd = { fg = "#5EF6FF", bold = true }
+
+find_keyword  = { fg = "#F3E600", bold = true, underline = true }
+find_position = { fg = "#5EF6FF", bg = "reset", bold = true }
+
+symlink_target = { fg = "#A3463F", italic = true }
+
+marker_copied   = { fg = "#1EF2A0", bg = "#1EF2A0" }
+marker_cut      = { fg = "#FF003C", bg = "#FF003C" }
+marker_marked   = { fg = "#5EF6FF", bg = "#5EF6FF" }
+marker_selected = { fg = "#F3E600", bg = "#F3E600" }
+marker_symbol   = "▌"
+
+count_copied   = { fg = "#0D0B10", bg = "#1EF2A0" }
+count_cut      = { fg = "#0D0B10", bg = "#FF003C" }
+count_selected = { fg = "#0D0B10", bg = "#F3E600" }
+
+border_symbol = "│"
+border_style  = { fg = "#5A1E24" }
+
+[tabs]
+active   = { fg = "#0D0B10", bg = "#FF6159", bold = true }
+inactive = { fg = "#FF6159", bg = "#1C1016" }
+sep_inner = { open = "◢", close = "◣" }
+sep_outer = { open = "◢", close = "◣" }
+
+[mode]
+normal_main = { fg = "#0D0B10", bg = "#FF6159", bold = true }
+normal_alt  = { fg = "#FF6159", bg = "#1C1016" }
+select_main = { fg = "#0D0B10", bg = "#F3E600", bold = true }
+select_alt  = { fg = "#F3E600", bg = "#1C1016" }
+unset_main  = { fg = "#0D0B10", bg = "#FF003C", bold = true }
+unset_alt   = { fg = "#FF003C", bg = "#1C1016" }
+
+[indicator]
+parent  = { fg = "#5EF6FF", bg = "#10353A" }
+current = { fg = "#5EF6FF", bg = "#10353A", bold = true }
+preview = { fg = "#5EF6FF", underline = true }
+padding = { open = "▐", close = "▌" }
+
+[status]
+overall   = { bg = "#08070B" }
+sep_left  = { open = "", close = "◤" }
+sep_right = { open = "◥", close = "" }
+
+perm_sep   = { fg = "#5A1E24" }
+perm_type  = { fg = "#5EF6FF" }
+perm_read  = { fg = "#F3E600" }
+perm_write = { fg = "#FF6159" }
+perm_exec  = { fg = "#1EF2A0" }
+
+progress_label  = { fg = "#F2EBE6", bold = true }
+progress_normal = { fg = "#5EF6FF", bg = "#1C1016" }
+progress_error  = { fg = "#F3E600", bg = "#FF003C" }
+
+[which]
+border          = { fg = "#FF6159" }
+cols            = 3
+mask            = { bg = "#08070B" }
+cand            = { fg = "#5EF6FF" }
+rest            = { fg = "#7D4446" }
+desc            = { fg = "#FF6159" }
+separator       = " ▸ "
+separator_style = { fg = "#5A1E24" }
+
+[confirm]
+border     = { fg = "#FF6159" }
+title      = { fg = "#5EF6FF", bold = true }
+body       = { fg = "#FF6159" }
+list       = { fg = "#FF8C82" }
+btn_yes    = { fg = "#0D0B10", bg = "#5EF6FF", bold = true }
+btn_no     = { fg = "#FF6159" }
+btn_labels = [ "  [Y] CONFIRM  ", "  (N) ABORT  " ]
+
+[spot]
+border   = { fg = "#FF6159" }
+title    = { fg = "#5EF6FF", bold = true }
+tbl_col  = { fg = "#5EF6FF" }
+tbl_cell = { fg = "#0D0B10", bg = "#5EF6FF" }
+
+[notify]
+title_info  = { fg = "#5EF6FF" }
+title_warn  = { fg = "#F3E600" }
+title_error = { fg = "#FF003C" }
+
+[pick]
+border   = { fg = "#FF6159" }
+active   = { fg = "#5EF6FF", bg = "#10353A", bold = true }
+inactive = { fg = "#FF6159" }
+
+[input]
+border   = { fg = "#5EF6FF" }
+title    = { fg = "#5EF6FF", bold = true }
+value    = { fg = "#F2EBE6" }
+selected = { fg = "#0D0B10", bg = "#5EF6FF" }
+
+[cmp]
+border   = { fg = "#5EF6FF" }
+active   = { fg = "#5EF6FF", bg = "#10353A", bold = true }
+inactive = { fg = "#FF6159" }
+
+[tasks]
+border  = { fg = "#FF6159" }
+title   = { fg = "#5EF6FF", bold = true }
+hovered = { fg = "#5EF6FF", bg = "#10353A", bold = true }
+
+[help]
+border  = { fg = "#FF6159" }
+chord   = { fg = "#5EF6FF" }
+action  = { fg = "#FF6159" }
+hovered = { fg = "#5EF6FF", bg = "#10353A", bold = true }
+
+[filetype]
+rules = [
+	# Directories read cyan, like folders/shards in the in-game file lists
+	{ url = "*/", fg = "#5EF6FF", bold = true },
+	# Media and images: gig yellow / braindance violet
+	{ mime = "**/image/*", fg = "#F3E600" },
+	{ mime = "**/{audio,video}/*", fg = "#C34DFF" },
+	# Archives: alarm red ("encrypted shard")
+	{ mime = "**/application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#FF003C" },
+	{ mime = "**/application/{pdf,doc,rtf}", fg = "#FF8C82" },
+	{ mime = "vfs/{absent,stale}", fg = "#7D4446" },
+	{ url = "*", is = "orphan", fg = "#0D0B10", bg = "#FF003C" },
+	{ url = "*", is = "exec", fg = "#1EF2A0" },
+	{ url = "*", is = "dummy", fg = "#0D0B10", bg = "#FF003C" },
+	{ url = "*/", is = "dummy", fg = "#0D0B10", bg = "#FF003C" },
+	# Everything else: HUD coral
+	{ url = "*", fg = "#FF6159" },
+]
