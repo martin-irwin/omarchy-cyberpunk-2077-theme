@@ -153,9 +153,15 @@ cyberpunk-wallpapers --res 3840x2160 # force 4K
 cyberpunk-wallpapers --list          # dry run
 ```
 
-Cycle with `omarchy theme bg next`. The repo ships one original wallpaper,
-`backgrounds/00-netwatch.jpg` (a "NIGHT CITY" net-access screen made for this
-theme), so the theme looks right before the download.
+Cycle with `omarchy theme bg next`. The repo ships two original wallpapers,
+so the theme looks right before the download:
+
+- `01-cyberpunk-2077.jpg`: CYBERPUNK 2077 in box-art yellow with the cyan
+  glitch shadow. The real logo is CDPR's custom lettering, which isn't
+  available as a font and is trademarked, so this is set in **Chakra Petch
+  Bold Italic** (Cadson Demak, SIL OFL), the closest free face: heavy,
+  slanted, with clipped corners.
+- `00-netwatch.jpg`: a "NIGHT CITY" net-access screen.
 
 ## Cyberdeck: the Night City file browser
 
@@ -233,7 +239,7 @@ user-CSS extension such as Stylus on `web.whatsapp.com`.
   pairing with this theme), linuxg33k76's Cyberpunk mega themes and
   OldJobobo/omarchy-city-783-theme.
 - Fonts: Rajdhani © Indian Type Foundry, Share Tech Mono © Carrois Type
-  Design. Both SIL Open Font License 1.1, licence texts in `fonts/`.
+  Design, Chakra Petch (wallpaper lettering only) © Cadson Demak. Both SIL Open Font License 1.1, licence texts in `fonts/`.
 - Cyberpunk 2077, its characters and wallpapers are © CD Projekt RED. This is
   an unofficial fan theme and is not affiliated with or endorsed by CD
   Projekt.
