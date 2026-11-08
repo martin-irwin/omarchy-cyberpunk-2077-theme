@@ -100,7 +100,7 @@
 .nc-out .selectable-text, .nc-out [data-testid="selectable-text"] { color: #5ef6ff !important; }
 .nc-out [data-testid="msg-meta"] { color: #2c8c94 !important; }
 .nc-in [data-testid="msg-meta"] { color: #a3463f !important; }
-.selectable-text { font-size: 1.06em; letter-spacing: .015em; }
+.selectable-text { font-size: 1.16em; letter-spacing: .015em; line-height: 1.35; }
 
 /* Reactions and date chips in HUD style */
 [data-testid="reaction-bubble"] { background: #130d12 !important; box-shadow: inset 0 0 0 1px #5a1e24 !important; }
@@ -145,3 +145,38 @@ body:not(.nc-thread) .nc-back { display: none; }
 [data-testid="drawer-left"], [data-testid="drawer-middle"], [data-testid="drawer-right"] {
   border-left-color: transparent !important;
 }
+
+/* A touch bigger in the contact list too */
+[data-testid="cell-frame-title"] { font-size: 1.08em; }
+[data-testid="cell-frame-secondary"] { font-size: 1.05em; }
+
+/* Narrow windows: the contact's name beats the // MESSAGES tag */
+@media (max-width: 760px) {
+  [data-testid="conversation-info-header-chat-title"]::after { content: none; }
+  .nc-back { padding: 0 10px; letter-spacing: .08em; }
+}
+
+/* ── Typing box (phone.js): • • • in an incoming message box ──────────── */
+#nc-typing {
+  position: fixed;
+  z-index: 2000;
+  display: none;
+  gap: 7px;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  background: #1c1016;
+  border-left: 2px solid #ff6159;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  pointer-events: none;
+}
+#nc-typing.nc-show { display: flex; }
+#nc-typing i {
+  width: 7px;
+  height: 7px;
+  background: #ff6159;
+  animation: nc-blink 1.2s infinite ease-in-out;
+}
+#nc-typing i:nth-child(2) { animation-delay: .2s; }
+#nc-typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes nc-blink { 0%, 100% { opacity: .2; } 40% { opacity: 1; } }

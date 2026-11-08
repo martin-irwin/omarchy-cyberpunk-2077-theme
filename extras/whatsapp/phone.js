@@ -9,6 +9,10 @@
 //     hides the contact list and WhatsApp's icon column so the chat fills the
 //     window. "◀ CONTACTS" in the chat header (or Esc, which closes the chat)
 //     brings back the contact list, full width, the way the phone does.
+//  3. A typing box: when WhatsApp says the contact is typing (it only shows
+//     "typing…" under their name), a boxed • • • appears in the chat as an
+//     incoming message, like on the phone. It lives outside WhatsApp's own
+//     markup, positioned over the chat, so it can't disturb the page.
 
 let listRequested = false; // true after "◀ CONTACTS", until a contact is picked
 
@@ -65,10 +69,40 @@ function addBackButton(main) {
   header.prepend(back);
 }
 
+// "typing…" / "recording audio…" under the name, in the languages WhatsApp
+// most likely runs in here; add yours if the box never shows.
+const TYPING = /typing|recording|schreibt|tippt|nimmt .* auf|escribiendo|grabando|écrit|enregistre|sta scrivendo|digitando|pisze/i;
+
+function typingBox(main) {
+  let box = document.getElementById("nc-typing");
+  const header = main && main.querySelector('[data-testid="conversation-header"]');
+  const title = header && header.querySelector('[data-testid="conversation-info-header-chat-title"]');
+  const status = header && title ? header.querySelector('[data-testid="conversation-info-header"]') : null;
+  const statusText = status ? status.innerText.replace(title.innerText, "") : "";
+  const typing = Boolean(main) && document.body.classList.contains("nc-thread") && TYPING.test(statusText);
+  if (!typing) {
+    if (box) box.classList.remove("nc-show");
+    return;
+  }
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "nc-typing";
+    box.innerHTML = "<i></i><i></i><i></i>";
+    document.body.appendChild(box);
+  }
+  const footer = main.querySelector("footer");
+  const area = main.getBoundingClientRect();
+  const bottom = footer ? footer.getBoundingClientRect().top : area.bottom;
+  box.style.left = `${area.left + 24}px`;
+  box.style.top = `${bottom - 58}px`;
+  box.classList.add("nc-show");
+}
+
 function update() {
   const main = document.getElementById("main");
   document.body.classList.toggle("nc-thread", Boolean(main) && !listRequested);
   document.body.classList.toggle("nc-list", Boolean(main) && listRequested);
+  typingBox(main);
   if (!main) return;
   tagRows(main);
   markLayout(main);
@@ -92,7 +126,7 @@ function start() {
       schedule();
     }
   }, true);
-  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   window.addEventListener("resize", schedule);
   schedule();
 }
