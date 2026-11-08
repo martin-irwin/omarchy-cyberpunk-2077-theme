@@ -1,5 +1,6 @@
-// Night City phone layer for WhatsApp in Ferdium (loaded as the service's
-// user.js). It does two things phone.css can't do alone:
+// Night City phone layer for WhatsApp. Runs as the Ferdium service's user.js,
+// or as the content script of the Cyberphone extension (extras/bin/cyberphone).
+// It does two things phone.css can't do alone:
 //
 //  1. Marks each message row as yours (nc-out) or incoming (nc-in). WhatsApp's
 //     class names are generated and don't say, so it goes by where the bubble
@@ -7,7 +8,7 @@
 //  2. Thread mode, like opening a conversation on V's phone: picking a contact
 //     hides the contact list and WhatsApp's icon column so the chat fills the
 //     window. "◀ CONTACTS" in the chat header (or Esc, which closes the chat)
-//     brings the list back.
+//     brings back the contact list, full width, the way the phone does.
 
 let listRequested = false; // true after "◀ CONTACTS", until a contact is picked
 
@@ -24,17 +25,26 @@ function tagRows(main) {
   }
 }
 
-// The layout columns to hide in thread mode: on the way up from #main, any
-// sibling that holds the contact list or the icon column. Only those, so
-// pop-ups and side drawers mounted elsewhere are never touched.
-function markColumns(main) {
-  for (const el of document.querySelectorAll(".nc-col")) el.classList.remove("nc-col");
+// Mark the layout around #main. Ancestors of #main (nc-chain) get their
+// minimum widths lifted, since WhatsApp's layout is wider than a half-screen
+// window. On the way up, the column holding #main is nc-maincol, and any
+// sibling column holding the contact list or the icon column is nc-col
+// (nc-col-side / nc-col-nav). Only those, so pop-ups and drawers mounted
+// elsewhere are never touched.
+function markLayout(main) {
+  for (const cls of ["nc-chain", "nc-col", "nc-col-side", "nc-col-nav", "nc-maincol"]) {
+    for (const el of document.querySelectorAll("." + cls)) el.classList.remove(cls);
+  }
   const app = document.getElementById("app");
   for (let node = main; node && node !== app && node.parentElement; node = node.parentElement) {
+    node.classList.add("nc-chain");
     for (const sib of node.parentElement.children) {
       if (sib === node) continue;
-      if (sib.querySelector("#side, [data-testid='navbar-primary-section']") || sib.id === "side") {
-        sib.classList.add("nc-col");
+      const side = sib.id === "side" || sib.querySelector("#side");
+      const nav = sib.querySelector("[data-testid='navbar-primary-section']");
+      if (side || nav) {
+        sib.classList.add("nc-col", side ? "nc-col-side" : "nc-col-nav");
+        node.classList.add("nc-maincol");
       }
     }
   }
@@ -58,13 +68,14 @@ function addBackButton(main) {
 function update() {
   const main = document.getElementById("main");
   document.body.classList.toggle("nc-thread", Boolean(main) && !listRequested);
+  document.body.classList.toggle("nc-list", Boolean(main) && listRequested);
   if (!main) return;
   tagRows(main);
-  markColumns(main);
+  markLayout(main);
   addBackButton(main);
 }
 
-module.exports = () => {
+function start() {
   let queued = false;
   const schedule = () => {
     if (queued) return;
@@ -84,6 +95,11 @@ module.exports = () => {
   new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("resize", schedule);
   schedule();
-};
+}
 
-module.exports.update = update;
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = start; // Ferdium calls it with (config, Ferdium)
+  module.exports.update = update;
+} else {
+  start(); // browser extension content script
+}

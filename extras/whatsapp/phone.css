@@ -115,9 +115,15 @@
 }
 footer [contenteditable="true"] { box-shadow: inset 0 -1px 0 #5ef6ff !important; }
 
-/* ── Thread mode (phone.js): a picked conversation fills the window ───── */
+/* ── Thread mode (phone.js): one screen at a time, like the phone ─────── */
+/* WhatsApp's layout has a ~750px minimum width; let it shrink to the window */
+.nc-chain { min-width: 0 !important; max-width: 100% !important; }
 body.nc-thread .nc-col { display: none !important; }
-body.nc-thread #main { flex: 1 1 auto !important; max-width: none !important; width: 100% !important; }
+body.nc-thread .nc-maincol, body.nc-thread #main { flex: 1 1 auto !important; width: 100% !important; }
+/* Contacts screen: the list fills the window, the open chat waits behind it */
+body.nc-list .nc-maincol { display: none !important; }
+body.nc-list .nc-col-side { flex: 1 1 auto !important; max-width: none !important; width: auto !important; }
+body.nc-list .nc-col-side * { max-width: none; }
 .nc-back {
   flex: none;
   align-self: stretch;
@@ -133,3 +139,9 @@ body.nc-thread #main { flex: 1 1 auto !important; max-width: none !important; wi
 }
 .nc-back:hover { color: #0d0b10; background: #5ef6ff; }
 body:not(.nc-thread) .nc-back { display: none; }
+
+/* WhatsApp's slide-in drawers sit over the chat even when empty; their
+   divider borders showed as stray vertical lines. */
+[data-testid="drawer-left"], [data-testid="drawer-middle"], [data-testid="drawer-right"] {
+  border-left-color: transparent !important;
+}

@@ -1,0 +1,81 @@
+#!/bin/bash
+# Cyberphone: WhatsApp as V's phone, in its own window with no Ferdium frame.
+#
+# Runs WhatsApp Web as a Chromium app window with its own profile, and loads
+# the Night City skin (extras/whatsapp: night-city.css, phone.css, phone.js)
+# as a small local extension. The first launch shows WhatsApp's QR code: link
+# it like any other device (WhatsApp > Settings > Linked devices).
+#
+#   cyberphone             open it
+#   cyberphone --install   add "Cyberphone" to the app launcher
+#   cyberphone --remove    remove the launcher entry, profile and login
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+SKIN="$THEME_DIR/extras/whatsapp"
+DATA="$HOME/.local/share/cyberphone"
+DESKTOP="$HOME/.local/share/applications/cyberphone.desktop"
+URL="https://web.whatsapp.com/"
+
+case ${1:-} in
+  --install)
+    mkdir -p "$(dirname "$DESKTOP")"
+    cat >"$DESKTOP" <<EOF
+[Desktop Entry]
+Name=Cyberphone
+Comment=WhatsApp as V's phone (Night City skin)
+Exec=$HOME/.local/bin/cyberphone
+Icon=$THEME_DIR/extras/whatsapp/cyberphone.png
+Terminal=false
+Type=Application
+Categories=Network;InstantMessaging;
+StartupWMClass=cyberphone
+EOF
+    echo "Cyberphone added to the app launcher"
+    exit 0
+    ;;
+  --remove)
+    rm -rf "$DATA" "$DESKTOP"
+    echo "Cyberphone removed (its WhatsApp link stays listed on your phone until you log it out there)"
+    exit 0
+    ;;
+  -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) echo "Unknown option: $1" >&2; exit 1 ;;
+esac
+
+# Rebuild the extension from the theme on every launch, so a git pull of the
+# theme updates the skin.
+ext="$DATA/extension"
+mkdir -p "$ext" "$DATA/profile"
+cp "$SKIN/night-city.css" "$SKIN/phone.css" "$SKIN/phone.js" "$ext/"
+cat >"$ext/manifest.json" <<'EOF'
+{
+  "manifest_version": 3,
+  "name": "Cyberphone: Night City WhatsApp",
+  "version": "1.0",
+  "description": "Skins WhatsApp Web as the phone in Cyberpunk 2077.",
+  "content_scripts": [{
+    "matches": ["https://web.whatsapp.com/*"],
+    "css": ["night-city.css", "phone.css"],
+    "js": ["phone.js"],
+    "run_at": "document_idle"
+  }]
+}
+EOF
+
+browser=chromium
+command -v chromium >/dev/null || browser=$(command -v google-chrome-stable || command -v brave || true)
+[[ -n $browser ]] || { echo "Cyberphone needs Chromium (omarchy pkg add chromium)." >&2; exit 1; }
+
+# The skin is written for WhatsApp's dark mode; --force-dark-mode asks for it.
+exec setsid "$browser" \
+  --user-data-dir="$DATA/profile" \
+  --class=cyberphone \
+  --app="$URL" \
+  --load-extension="$ext" \
+  --disable-features=DisableLoadExtensionCommandLineSwitch \
+  --force-dark-mode \
+  --no-first-run --no-default-browser-check \
+  >/dev/null 2>&1
