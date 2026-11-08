@@ -28,6 +28,8 @@ Panel {
   readonly property int refreshMs: Math.max(15, Math.min(3600, Number(setting("refreshIntervalSec", 60)) || 60)) * 1000
   // Development only: a saved `tailscale status --json` to show instead.
   readonly property string statusFile: String(setting("statusFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
+  // Development only: a saved Tailscale API device list (via-host mode).
+  readonly property string apiFile: String(setting("apiFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
 
   property var net: ({ self: { name: "", ip: "", state: "" }, peers: [] })
   property bool loaded: false
@@ -39,13 +41,20 @@ Panel {
   readonly property int online: Model.onlineCount(net && net.peers ? net.peers : [])
   readonly property string selfIp: net && net.self ? net.self.ip : ""
   readonly property string tsState: net && net.self ? net.self.state : ""
-  readonly property bool connected: tsState === "Running" && selfIp !== ""
+  // Via host: this machine reaches the tailnet through its host (a VM behind
+  // a Mac, say) and jack reads the machine list from the Tailscale API.
+  readonly property bool viaHost: tsState === "ViaHost"
+  readonly property bool viaHostError: tsState === "ViaHostError"
+  readonly property bool onLocalTailnet: tsState === "Running" && selfIp !== ""
+  readonly property bool connected: onLocalTailnet || viaHost
   readonly property bool needsLogin: tsState === "NeedsLogin" || tsState === "NeedsMachineAuth"
   readonly property bool missing: tsState === "Missing"
 
   // Bar text, read by BarWidget.qml
   readonly property string label: !loaded ? "TSNET …"
-    : connected ? "TSNET " + selfIp
+    : onLocalTailnet ? "TSNET " + selfIp
+    : viaHost ? "TSNET VIA HOST"
+    : viaHostError ? "TSNET API ERR"
     : missing ? "TSNET N/A"
     : needsLogin ? "TSNET LOGIN"
     : "TSNET OFF"
@@ -154,7 +163,8 @@ Panel {
   Process {
     id: statusProc
     command: [root.jackPath, "--json"].concat(root.watch)
-    environment: root.statusFile !== "" ? ({ "JACK_STATUS_FILE": root.statusFile }) : ({})
+    environment: root.statusFile !== "" ? ({ "JACK_STATUS_FILE": root.statusFile })
+               : root.apiFile !== "" ? ({ "JACK_API_FILE": root.apiFile }) : ({})
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -228,8 +238,9 @@ Panel {
             anchors.right: parent.right
             anchors.baseline: header.baseline
             textFormat: Text.PlainText
-            text: root.selfIp !== ""
+            text: root.onLocalTailnet
               ? root.online + " ONLINE  //  " + (root.net.self.name || "").toUpperCase() + " " + root.selfIp
+              : root.viaHost ? root.online + " ONLINE  //  VIA HOST"
               : ""
             color: Color.accent
             font.family: panel.family
@@ -243,6 +254,7 @@ Panel {
           wrapMode: Text.WordWrap
           textFormat: Text.PlainText
           text: !root.loaded ? "Scanning the net…"
+              : root.viaHostError ? "Couldn't read your tailnet from the Tailscale API. Check ~/.config/jack/tailscale-oauth (run: jack --api-check)."
               : root.missing ? "Tailscale isn't installed on this deck."
               : root.needsLogin ? "This deck isn't logged in to your tailnet."
               : !root.connected ? "This deck is off the tailnet."
@@ -255,7 +267,7 @@ Panel {
         // Big CONNECT / LOG IN button when this machine is off the tailnet
         Rectangle {
           id: connectButton
-          visible: root.loaded && !root.connected && !root.missing
+          visible: root.loaded && !root.connected && !root.missing && !root.viaHostError
           width: parent.width
           height: Style.spacing.popupRowHeight
           radius: 0
@@ -383,9 +395,11 @@ Panel {
           width: parent.width
           height: footerHint.implicitHeight + Style.space(4)
 
-          // JACK OUT: take this machine off the tailnet (tailscale down)
+          // JACK OUT: take this machine off the tailnet (tailscale down).
+          // Not shown via host: there's no local connection to drop.
           Text {
             id: jackOut
+            visible: root.onLocalTailnet
             anchors.left: parent.left
             anchors.bottom: parent.bottom
             textFormat: Text.PlainText

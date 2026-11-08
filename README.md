@@ -213,10 +213,42 @@ out. `jack` does the same in a terminal: `jack` (fzf picker), `jack om`
 - Super+G was Omarchy's window grouping; that moves to **Super+Ctrl+G**.
   Both live in `extras/hypr/cyberpunk-2077.lua`, which `--no-cyberdeck` skips.
 
+When this machine is off the tailnet, the bar reads `TSNET OFF` or
+`TSNET LOGIN` and NETRUNNERS offers **CONNECT** / **LOG IN** (Enter presses
+it): `tailscale up`, opening the login page if needed. The first time, it
+asks once (pkexec) to let your user switch Tailscale on and off, as Omarchy's
+own Tailscale panel does. **JACK OUT** in the footer runs `tailscale down`.
+
+### Via host: VMs that use their host's Tailscale
+
+A VM behind a Mac (or any machine) that already runs Tailscale can reach the
+whole tailnet through it, with no Tailscale of its own, but then there's no
+local tailnet to ask who's online. For that case NETRUNNERS reads the machine
+list from the Tailscale API instead, and the bar reads `TSNET VIA HOST`:
+
+1. In the Tailscale admin console, **Settings → OAuth clients → Generate**,
+   with only **Devices: Core → Read** (`devices:core:read`). It can list
+   machines and nothing else, and unlike API keys it doesn't expire.
+2. On the VM:
+   ```bash
+   mkdir -p ~/.config/jack
+   printf 'client_id=%s\nclient_secret=%s\n' 'YOUR_ID' 'tskey-client-…' > ~/.config/jack/tailscale-oauth
+   chmod 600 ~/.config/jack/tailscale-oauth
+   jack --api-check     # API OK: 10 devices, 6 online
+   ```
+
+It's used only while local Tailscale isn't running. Each refresh is one HTTPS
+request to `api.tailscale.com` (cached 30 s); the secret is never put on a
+command line. Jack-in is plain SSH to the 100.x address, which the host's
+Tailscale carries.
+
+### Network use
+
 The WAN widget's ping (to `1.1.1.1`, settable with
 `omarchy bar set cyberpunk.wan target <host>`) is the only network traffic
-these plugins start on their own; there's no public-IP lookup. Uptime SSH goes
-only to watched hosts on your own tailnet.
+these plugins start on their own, apart from the Tailscale API in via-host
+mode, which you opt into with the credentials file. There's no public-IP
+lookup. Uptime SSH goes only to watched hosts on your own tailnet.
 
 ### Node wallpaper
 

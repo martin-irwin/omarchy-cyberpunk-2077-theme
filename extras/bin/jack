@@ -7,21 +7,101 @@
 #   jack --json [W ...]  host status for the NETRUNNERS bar panel; W are
 #                        watched hosts, whose uptime is fetched over SSH
 #   jack --term <host>   open a new terminal window jacked in to <host>
+#   jack --connect       bring this machine onto the tailnet (or log in)
+#   jack --disconnect    take it off again
+#   jack --api-check     test the via-host credentials (see below)
 #
 # Hosts come live from `tailscale status --json`; phones are left out. The
 # login user is yours unless ~/.config/jack/users says otherwise
 # ("host user" per line). Uptime uses SSH with keys only (never prompts),
 # cached for 5 minutes in ~/.cache/jack/.
+#
+# Via host: a machine that reaches the tailnet through its host (a VM behind
+# a Mac running Tailscale, say) has no tailnet of its own to ask. If local
+# Tailscale isn't running and ~/.config/jack/tailscale-oauth exists, the host
+# list comes from the Tailscale API instead (read-only OAuth client, scope
+# devices:core:read):
+#     client_id=...
+#     client_secret=tskey-client-...
+# One HTTPS request to api.tailscale.com per refresh, cached for 30 s.
 
 set -o pipefail
 USERS_FILE="$HOME/.config/jack/users"
+API_CRED="$HOME/.config/jack/tailscale-oauth"
+API_BASE="https://api.tailscale.com/api/v2"
 CACHE="$HOME/.cache/jack"
 DEFAULT_USER=${JACK_USER:-$USER}
 
-# JACK_STATUS_FILE: read a saved `tailscale status --json` instead of asking
-# tailscale (for tests and for working on the panel without a tailnet).
+have_api() { [[ -r $API_CRED || -n ${JACK_API_FILE:-} ]]; }
+
+# OAuth client credentials → access token, cached until shortly before it
+# expires. The secret goes to curl through a file descriptor, never argv.
+api_token() {
+  local tok_file="$CACHE/api-token" now exp tok id secret resp
+  now=$(date +%s)
+  if [[ -r $tok_file ]]; then
+    read -r exp tok <"$tok_file"
+    [[ $exp =~ ^[0-9]+$ ]] && (( exp > now + 60 )) && [[ -n $tok ]] && { echo "$tok"; return 0; }
+  fi
+  id=$(sed -n 's/^client_id=//p' "$API_CRED" | head -1 | tr -d '[:space:]')
+  secret=$(sed -n 's/^client_secret=//p' "$API_CRED" | head -1 | tr -d '[:space:]')
+  [[ -n $id && -n $secret ]] || return 1
+  resp=$(curl -fsS --max-time 10 --max-filesize 65536 \
+    -K <(printf 'user = "%s:%s"\n' "$id" "$secret") \
+    -d grant_type=client_credentials "$API_BASE/oauth/token") || return 1
+  tok=$(jq -r '.access_token // empty' <<<"$resp")
+  exp=$(( now + $(jq -r '(.expires_in // 3600) | floor' <<<"$resp") ))
+  [[ $tok =~ ^[A-Za-z0-9._~+/=-]+$ ]] || return 1
+  mkdir -p "$CACHE"
+  (umask 077; printf '%s %s\n' "$exp" "$tok" >"$tok_file")
+  echo "$tok"
+}
+
+# The API's device list, reshaped like `tailscale status --json` so the rest
+# of jack (and the panel) can't tell the difference. JACK_API_FILE reads a
+# saved API response instead (tests).
+api_status() {
+  local cache="$CACHE/api-devices.json" devices tok self
+  self=$(hostname | tr '[:upper:]' '[:lower:]')
+  if [[ -n ${JACK_API_FILE:-} ]]; then
+    devices=$(cat "$JACK_API_FILE")
+  elif [[ -r $cache ]] && (( $(date +%s) - $(stat -c %Y "$cache") < 30 )); then
+    devices=$(cat "$cache")
+  else
+    tok=$(api_token) || return 1
+    devices=$(curl -fsS --max-time 10 --max-filesize 4000000 \
+      -H @<(printf 'Authorization: Bearer %s\n' "$tok") \
+      "$API_BASE/tailnet/-/devices") || return 1
+    mkdir -p "$CACHE"
+    (umask 077; printf '%s' "$devices" >"$cache")
+  fi
+  jq --arg self "$self" '
+    def iso2epoch: (sub("\\.[0-9]+"; "") | try fromdateiso8601 catch 0);
+    { BackendState: "ViaHost",
+      Self: { HostName: $self, DNSName: "", TailscaleIPs: [] },
+      Peer: ([ (.devices // [])[]
+        | select((((.name // "") | split(".")[0]) | ascii_downcase) != $self)
+        | { DNSName: (.name // ""), HostName: (.hostname // ""),
+            TailscaleIPs: [ (.addresses // [])[] | select(test("^[0-9.]+$")) ],
+            OS: (.os // ""),
+            Online: (if .connectedToControl != null then .connectedToControl == true
+                     else (now - ((.lastSeen // "1970-01-01T00:00:00Z") | iso2epoch)) < 300 end),
+            LastSeen: (.lastSeen // "") } ]
+        | to_entries | map({ key: ("api:" + (.key | tostring)), value }) | from_entries) }' <<<"$devices"
+}
+
+# Where host data comes from: a saved file (tests), local Tailscale when this
+# machine is on the tailnet itself, else the API when credentials are set up.
 ts_status() {
-  if [[ -n ${JACK_STATUS_FILE:-} ]]; then cat "$JACK_STATUS_FILE"; else tailscale status --json 2>/dev/null; fi
+  if [[ -n ${JACK_STATUS_FILE:-} ]]; then cat "$JACK_STATUS_FILE"; return; fi
+  local local_json="" state=""
+  command -v tailscale >/dev/null && local_json=$(tailscale status --json 2>/dev/null)
+  state=$(jq -r '.BackendState // ""' <<<"$local_json" 2>/dev/null)
+  if [[ $state != Running ]] && have_api; then
+    api_status || echo '{"BackendState":"ViaHostError"}'
+    return
+  fi
+  printf '%s' "$local_json"
 }
 
 # name<TAB>ip<TAB>os<TAB>online<TAB>lastSeen, online first
@@ -74,7 +154,7 @@ refresh_uptime() {
 json() {
   local watch=" $* " now self_ip self_name state first=1 name ip os online seen f age up
   now=$(date +%s)
-  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null; then
+  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null && ! have_api; then
     state=Missing
   else
     # fields tab-separated so an empty name or IP can't shift the others
@@ -183,6 +263,15 @@ connect() {
 case ${1:-} in
   --json) shift; json "$@" ;;
   --refresh-uptime) refresh_uptime "$2" ;;
+  --api-check)
+    have_api || { echo "No credentials: create $API_CRED (client_id=…, client_secret=…)" >&2; exit 1; }
+    [[ -r $API_CRED ]] && [[ $(stat -c %a "$API_CRED") != 600 ]] && echo "note: chmod 600 $API_CRED" >&2
+    rm -f "$CACHE/api-devices.json"
+    if out=$(api_status); then
+      echo "API OK: $(jq '.Peer | length' <<<"$out") devices, $(jq '[.Peer[] | select(.Online)] | length' <<<"$out") online"
+    else
+      echo "API request failed: check the client ID/secret and that the client has devices:core:read" >&2; exit 1
+    fi ;;
   --connect) tailnet_up ;;
   --disconnect) tailnet_down ;;
   --list|-l)
