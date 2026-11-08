@@ -1,6 +1,9 @@
 #!/bin/bash
 # Skin WhatsApp in Ferdium as V's phone, and give Ferdium itself the Night City
-# colours (dark mode, coral accent, square corners).
+# colours (dark mode, coral accent, square corners, no menu bar).
+#
+#   cyberpunk-ferdium                 colours + the in-game phone layout
+#   cyberpunk-ferdium --colours-only  just the Night City colours
 #
 # Add WhatsApp in Ferdium once first (Settings > Available services > WhatsApp),
 # then run this. Re-run it if a Ferdium update resets the WhatsApp recipe.
@@ -9,7 +12,9 @@ set -euo pipefail
 
 THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 CONFIG="$HOME/.config/Ferdium"
-SKIN="$THEME_DIR/extras/whatsapp/night-city.css"
+SKIN="$THEME_DIR/extras/whatsapp"
+phone=1
+[[ ${1:-} == --colours-only ]] && phone=0
 
 if [[ ! -d $CONFIG ]]; then
   echo "Ferdium has not been run yet. Start it, add WhatsApp, then run this again."
@@ -17,8 +22,17 @@ if [[ ! -d $CONFIG ]]; then
 fi
 
 if [[ -d $CONFIG/recipes/whatsapp ]]; then
-  cp "$SKIN" "$CONFIG/recipes/whatsapp/user.css"
-  echo "WhatsApp skin installed (reload the WhatsApp service to see it)"
+  recipe="$CONFIG/recipes/whatsapp"
+  if (( phone )); then
+    # phone.js marks which messages are yours; phone.css draws the phone.
+    cat "$SKIN/night-city.css" "$SKIN/phone.css" >"$recipe/user.css"
+    cp "$SKIN/phone.js" "$recipe/user.js"
+    echo "WhatsApp skin installed: Night City phone (restart Ferdium to see it)"
+  else
+    cp "$SKIN/night-city.css" "$recipe/user.css"
+    rm -f "$recipe/user.js"
+    echo "WhatsApp skin installed: colours only (restart Ferdium to see it)"
+  fi
 else
   echo "WhatsApp is not added in Ferdium yet: add it, then run this again for the skin."
 fi
@@ -42,7 +56,13 @@ settings.update({
     "progressbarAccentColor": "#5EF6FF",
     "serviceWebviewBorderRadius": 0,
     "webviewPaddingSize": 0,
+    # Ferdium's own frame can't be restyled, so show less of it.
+    "autohideMenuBar": True,
+    "hideWorkspacesButton": True,
+    "hideNotificationsButton": True,
+    "hideDownloadButton": True,
+    "hideSplitModeButton": True,
 })
 json.dump(settings, open(path, "w"), indent=2)
 PY
-echo "Ferdium set to dark mode with the coral accent"
+echo "Ferdium set to dark mode with the coral accent; menu bar hidden (press Alt to show it)"

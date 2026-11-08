@@ -1,0 +1,116 @@
+/* Night City phone layer: reshapes WhatsApp Web to look like the messages
+   screen on V's phone. Layered on night-city.css (the colours). Hooks are
+   WhatsApp's data-testid names and the nc-in / nc-out row marks added by
+   phone.js; if a WhatsApp update renames one, only that detail is lost. */
+
+/* ── Everything square: the game's UI has no rounded corners ─────────── */
+#app *, #app *::before, #app *::after { border-radius: 0 !important; }
+
+/* Labels in the game's condensed caps */
+[data-testid="conversation-info-header-chat-title"],
+[data-testid="cell-frame-title"],
+[data-testid="filter-button"] {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 600 !important;
+}
+
+/* ── Contact list: the phone's contacts panel ─────────────────────────── */
+#side { background: #08070b !important; border-right: 1px solid #5a1e24; }
+[data-testid="chat-list-search-container"] > div {
+  background: #0d0b10 !important;
+  box-shadow: inset 0 0 0 1px #5a1e24 !important;
+}
+[data-testid="filter-button"] { box-shadow: inset 0 0 0 1px #5a1e24 !important; }
+[data-testid="cell-frame-container"] { border-left: 3px solid transparent; }
+[aria-selected="true"] [data-testid="cell-frame-container"],
+[data-testid="cell-frame-container"]:hover { border-left-color: #5ef6ff; }
+[data-testid="chat-list-timestamp"] {
+  font-family: "Share Tech Mono", monospace !important;
+}
+
+/* Portraits (not emoji, which are img[crossorigin]): square, red-tinted
+   holo, framed like the in-game contacts */
+#side img[referrerpolicy], [data-testid="conversation-header"] img[referrerpolicy] {
+  filter: grayscale(1) sepia(1) hue-rotate(-35deg) saturate(2.6) contrast(1.1) brightness(.9);
+  box-shadow: 0 0 0 1px #ff6159;
+}
+
+/* The WhatsApp wordmark becomes the phone app's title */
+[data-testid="wa-wordmark"] svg { display: none !important; }
+[data-testid="wa-wordmark"]::after {
+  content: "MESSAGES";
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: .14em;
+  color: #ff6159;
+}
+
+/* ── Conversation header: contact name in caps over a HUD rule ────────── */
+[data-testid="conversation-header"] {
+  background: #040306 !important;
+  border-bottom: 1px solid #ff6159 !important;
+  box-shadow: 0 1px 12px rgba(255, 97, 89, .18);
+}
+[data-testid="conversation-info-header-chat-title"] { color: #ff6159 !important; font-size: 1.15em; }
+[data-testid="conversation-info-header-chat-title"]::after {
+  content: "  // MESSAGES";
+  font-family: "Share Tech Mono", monospace;
+  font-size: .7em;
+  color: #a3463f;
+  letter-spacing: .12em;
+}
+
+/* ── The chat: dark grid with scanlines instead of WhatsApp's doodles ─── */
+[data-testid="conversation-background-default_chat_wallpaper"] { opacity: 0 !important; }
+[data-testid="conversation-panel-wrapper"] {
+  background:
+    linear-gradient(rgba(255, 97, 89, .045) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(255, 97, 89, .045) 1px, transparent 1px) 0 0 / 48px 48px,
+    #08070b !important;
+}
+#main { position: relative; }
+#main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
+}
+
+/* No speech-bubble tails: messages are boxes */
+[data-icon="tail-in"], [data-icon="tail-out"] { display: none !important; }
+
+/* Message boxes with a clipped corner, like the in-game panels */
+[data-testid="msg-container"] {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  box-shadow: none !important;
+}
+.nc-in [data-testid="msg-container"] {
+  background: #1c1016 !important;
+  border-left: 2px solid #ff6159;
+}
+.nc-out [data-testid="msg-container"] {
+  background: #0e2a2e !important;
+  border-right: 2px solid #5ef6ff;
+}
+.nc-in .selectable-text, .nc-in [data-testid="selectable-text"] { color: #ff6159 !important; }
+.nc-out .selectable-text, .nc-out [data-testid="selectable-text"] { color: #5ef6ff !important; }
+.nc-out [data-testid="msg-meta"] { color: #2c8c94 !important; }
+.nc-in [data-testid="msg-meta"] { color: #a3463f !important; }
+.selectable-text { font-size: 1.06em; letter-spacing: .015em; }
+
+/* Reactions and date chips in HUD style */
+[data-testid="reaction-bubble"] { background: #130d12 !important; box-shadow: inset 0 0 0 1px #5a1e24 !important; }
+
+/* ── Reply line: a terminal prompt ─────────────────────────────────────── */
+[data-testid="compose-box"] { background: #040306 !important; border-top: 1px solid #5a1e24; }
+[data-testid="compose-box"] > div { background: transparent !important; }
+[data-testid="conversation-compose-box-input"] {
+  font-family: "Share Tech Mono", monospace !important;
+  color: #5ef6ff !important;
+  caret-color: #5ef6ff;
+}
+footer [contenteditable="true"] { box-shadow: inset 0 -1px 0 #5ef6ff !important; }
