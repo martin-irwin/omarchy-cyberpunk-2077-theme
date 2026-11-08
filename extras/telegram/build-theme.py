@@ -77,6 +77,22 @@ PINNED = {
     "msgOutServiceFg": "#a8fbff",
     "msgServiceBg": "#1c1016d0",
     "msgServiceFg": "#f3e600",
+    # Reply and quote bars: coral in their messages, cyan in yours
+    "msgInReplyBarColor": "#ff6159",
+    "msgInReplyBarSelColor": "#ff8c82",
+    "msgOutReplyBarColor": "#5ef6ff",
+    "msgOutReplyBarSelColor": "#a8fbff",
+    # Unread divider and pinned bar in HUD style
+    "historyUnreadBarBg": "#130d12",
+    "historyUnreadBarBorder": "#5a1e24",
+    "historyPinnedBg": "#040306",
+    "emojiPanHeaderBg": "#0d0b10f2",
+    # Drafts and "typing…" in the chat list
+    "dialogsDraftFg": "#f3e600",
+    "dialogsTextFgService": "#5ef6ff",
+    "dialogsTextFgServiceOver": "#5ef6ff",
+    "dialogsVerifiedIconBg": "#5ef6ff",
+    "dialogsVerifiedIconFg": "#0d0b10",
     # Matched to Cyberphone: near-black header and reply area, cyan typing
     "topBarBg": "#040306",
     "historyComposeAreaBg": "#040306",
@@ -114,6 +130,16 @@ PINNED = {
     "sideBarIconFgActive": "#5ef6ff",
     "sideBarBadgeBg": "#ff6159",
 }
+
+
+# Telegram's eight peer colours (names in groups, placeholder portraits)
+PEERS = ["#ff003c", "#ff8a3d", "#c34dff", "#1ef2a0", "#5ef6ff", "#3fa9ff", "#ff6159", "#f3e600"]
+for i, colour in enumerate(PEERS, 1):
+    PINNED[f"historyPeer{i}NameFg"] = colour
+    PINNED[f"historyPeer{i}NameFgSelected"] = colour
+    PINNED[f"historyPeer{i}UserpicBg"] = colour
+    PINNED[f"historyPeer{i}UserpicBg2"] = colour
+PINNED["historyPeerUserpicFg"] = "#0d0b10"
 
 
 def hexrgb(h):
