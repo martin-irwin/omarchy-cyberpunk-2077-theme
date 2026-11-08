@@ -239,7 +239,7 @@ user-CSS extension such as Stylus on `web.whatsapp.com`.
   pairing with this theme), linuxg33k76's Cyberpunk mega themes and
   OldJobobo/omarchy-city-783-theme.
 - Fonts: Rajdhani © Indian Type Foundry, Share Tech Mono © Carrois Type
-  Design, Chakra Petch (wallpaper lettering only) © Cadson Demak. Both SIL Open Font License 1.1, licence texts in `fonts/`.
+  Design, Chakra Petch © Cadson Demak (used for the wallpaper lettering only, not bundled). All SIL Open Font License 1.1; licence texts for the bundled fonts are in `fonts/`.
 - Cyberpunk 2077, its characters and wallpapers are © CD Projekt RED. This is
   an unofficial fan theme and is not affiliated with or endorsed by CD
   Projekt.
