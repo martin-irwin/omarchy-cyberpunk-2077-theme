@@ -28,6 +28,13 @@ HYPR_DIR="$HOME/.config/hypr"
 STATE_DIR="$HOME/.local/state/omarchy-cyberpunk-2077"
 MONO_FONT="Share Tech Mono"
 REQUIRE_LINE='pcall(require, "hypr.cyberpunk-2077") -- Cyberpunk 2077 theme extras'
+# omarchy theme set renders terminal, Hyprland and editor colours from
+# $OMARCHY_PATH/default/themed; non-login shells (ssh, cron) may not set it.
+if [[ -z ${OMARCHY_PATH:-} ]]; then
+  for d in /usr/share/omarchy "$HOME/.local/share/omarchy"; do
+    [[ -d $d/default/themed ]] && { export OMARCHY_PATH=$d; break; }
+  done
+fi
 
 keep_font=0 wallpapers=core cyberdeck=1 uninstall=0 screensaver=0
 
