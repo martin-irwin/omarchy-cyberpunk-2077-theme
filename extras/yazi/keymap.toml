@@ -1,0 +1,6 @@
+# Cyberdeck keys on top of Yazi's defaults (h / ← already go up a folder).
+[mgr]
+prepend_keymap = [
+  { on = "<Backspace>", run = "leave", desc = "Go up a folder" },
+  { on = "-", run = "leave", desc = "Go up a folder" },
+]

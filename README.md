@@ -182,6 +182,8 @@ cursor is cyan on dark teal. It has a `CYBERDECK` header badge, `NET//USER`
 and a clock in angular status segments, and prompts like `JACK IN // PATH:`.
 Archives read as alarm-red "shards", images gig-yellow, media violet.
 
+**Backspace** or `-` also go up a folder, as well as Yazi's usual `h` / ←.
+
 It runs with its own config (`YAZI_CONFIG_HOME=extras/yazi`), so your normal
 `~/.config/yazi` is untouched. You can also run `cyberdeck [dir]` from a
 terminal. To use the flavor in your everyday Yazi, copy
