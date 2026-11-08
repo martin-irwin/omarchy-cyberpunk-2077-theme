@@ -15,6 +15,8 @@
 #      then appear in Omarchy's theme picker
 #   6. re-applies the theme so the new wallpapers and font show up
 #
+#   ./install.sh --screensaver also sets the screensaver to the box-art logo
+#                              (global, so opt-in; your current one is backed up)
 #   ./install.sh --uninstall   undoes 1, 2, 4 and 5 (wallpapers are left in place)
 
 set -euo pipefail
@@ -27,7 +29,7 @@ STATE_DIR="$HOME/.local/state/omarchy-cyberpunk-2077"
 MONO_FONT="Share Tech Mono"
 REQUIRE_LINE='pcall(require, "hypr.cyberpunk-2077") -- Cyberpunk 2077 theme extras'
 
-keep_font=0 wallpapers=core cyberdeck=1 uninstall=0
+keep_font=0 wallpapers=core cyberdeck=1 uninstall=0 screensaver=0
 
 while (( $# )); do
   case $1 in
@@ -35,6 +37,7 @@ while (( $# )); do
     --all-wallpapers) wallpapers=all ;;
     --no-wallpapers) wallpapers=none ;;
     --no-cyberdeck) cyberdeck=0 ;;
+    --screensaver) screensaver=1 ;;
     --uninstall) uninstall=1 ;;
     -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
@@ -46,8 +49,9 @@ say() { printf '\e[38;2;94;246;255m::\e[0m \e[38;2;255;97;89m%s\e[0m\n' "$*"; }
 
 if (( uninstall )); then
   say "Removing Cyberdeck launcher and Hyprland extras"
-  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$BIN_DIR/cyberpunk-ferdium" "$HYPR_DIR/cyberpunk-2077.lua"
+  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$BIN_DIR/cyberpunk-ferdium" "$BIN_DIR/cyberpunk-screensaver" "$HYPR_DIR/cyberpunk-2077.lua"
   "$THEME_DIR/extras/bin/cyberpunk-variants" --remove
+  "$THEME_DIR/extras/bin/cyberpunk-screensaver" --restore 2>/dev/null || true
   [[ -f $HYPR_DIR/hyprland.lua ]] && sed -i '\#pcall(require, "hypr.cyberpunk-2077")#d' "$HYPR_DIR/hyprland.lua"
 
   if [[ -f $STATE_DIR/previous-font ]]; then
@@ -120,6 +124,13 @@ ln -sfn "$THEME_DIR/extras/bin/cyberpunk-ferdium" "$BIN_DIR/cyberpunk-ferdium"
 if [[ -d $HOME/.config/Ferdium/recipes/whatsapp ]]; then
   say "Skinning WhatsApp in Ferdium"
   "$THEME_DIR/extras/bin/cyberpunk-ferdium" | sed 's/^/   /' || true
+fi
+
+# Screensaver (opt-in: it is global, not per theme)
+ln -sfn "$THEME_DIR/extras/bin/cyberpunk-screensaver" "$BIN_DIR/cyberpunk-screensaver"
+if (( screensaver )); then
+  say "Setting the screensaver to the Cyberpunk 2077 logo"
+  "$THEME_DIR/extras/bin/cyberpunk-screensaver" | sed 's/^/   /' || echo "   (failed; re-run: cyberpunk-screensaver)"
 fi
 
 # 6. Apply (keeps a variant if one is already in use)

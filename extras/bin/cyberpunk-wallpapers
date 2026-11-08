@@ -8,6 +8,7 @@
 #   cyberpunk-wallpapers --all      also posters, gangs and Edgerunners
 #   cyberpunk-wallpapers --res 2560x1440   force a resolution
 #   cyberpunk-wallpapers --list     show what would be downloaded
+#   cyberpunk-wallpapers --only NAME --dest DIR   fetch one wallpaper (by its wallpapers.tsv name) into DIR
 
 set -euo pipefail
 
@@ -20,13 +21,16 @@ UA="Mozilla/5.0 (X11; Linux x86_64) omarchy-cyberpunk-2077-theme"
 sets="core"
 res=""
 list_only=0
+only=""
 
 while (( $# )); do
   case $1 in
     --all) sets="core extra" ;;
     --res) res="$2"; shift ;;
     --list) list_only=1 ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --only) only="$2"; sets="core extra"; shift ;;
+    --dest) DEST="$2"; shift ;;
+    -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
   shift
@@ -50,9 +54,9 @@ for service in $(grep -v '^#' "$LIST" | cut -f2 | sort -u); do
   curl -fsSL -A "$UA" "$API/$service?locale=en&type=wallpaper&page=1&limit=500" -o "$tmp/$service.json"
 done
 
-python3 -I - "$LIST" "$tmp" "$res" "$sets" >"$tmp/plan.tsv" <<'PY'
+python3 -I - "$LIST" "$tmp" "$res" "$sets" "$only" >"$tmp/plan.tsv" <<'PY'
 import json, sys
-list_path, tmp, res, sets = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4].split()
+list_path, tmp, res, sets, only = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4].split(), sys.argv[5]
 want_w, want_h = map(int, res.lower().split("x"))
 want_ratio = want_w / want_h
 
@@ -79,7 +83,7 @@ for line in open(list_path):
     if line.startswith("#") or not line.strip():
         continue
     id_, service, set_, name = line.rstrip("\n").split("\t")
-    if set_ not in sets:
+    if set_ not in sets or (only and name != only):
         continue
     if service not in media:
         data = json.load(open(f"{tmp}/{service}.json"))["data"]

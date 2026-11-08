@@ -27,6 +27,7 @@ a theme cannot do by itself:
 | Wallpapers | Downloads 30 official CDPR wallpapers sized for your monitor | `--no-wallpapers` (or `--all-wallpapers` for 50) |
 | Cyberdeck | Installs Yazi if missing, binds the Cyberdeck file browser to **Super+Alt+Y** | `--no-cyberdeck` |
 | Variants | Builds the Netrunner and Samurai colour variants (see below) | — |
+| Screensaver | Only with `--screensaver`: box-art logo screensaver | — |
 | Apply | Re-runs `omarchy theme set cyberpunk-2077` | — |
 
 `install.sh --uninstall` removes the fonts, launcher and keybinding and
@@ -151,6 +152,7 @@ cyberpunk-wallpapers                 # core set for your screen
 cyberpunk-wallpapers --all           # everything
 cyberpunk-wallpapers --res 3840x2160 # force 4K
 cyberpunk-wallpapers --list          # dry run
+cyberpunk-wallpapers --only 43-ultimate-edition --dest ~/Pictures   # just one
 ```
 
 Cycle with `omarchy theme bg next`. The repo ships two original wallpapers,
@@ -165,13 +167,19 @@ so the theme looks right before the download:
 
 ## Screensaver
 
-`extras/screensaver.txt` is CYBERPUNK 2077 as block art, set in Chakra Petch
-like the title wallpaper, for Omarchy's screensaver. The screensaver text is
-global rather than per-theme, so it isn't installed automatically:
+`cyberpunk-screensaver` turns Omarchy's screensaver into the box-art logo:
+the brush-script "Cyberpunk" with the spaced 2 ── 0 ── 7 ── 7 beneath,
+drawn in Braille characters so the slashes keep their shape. It fits a
+1080p screen even at 1.6x scaling.
+
+The logo is CD Projekt RED's trademark, so it isn't in this repo. The script
+fetches the official Ultimate Edition wallpaper from cyberpunk.net (black
+logo on flat yellow) and traces it on your machine. The screensaver text is
+global rather than per-theme, so it's opt-in:
 
 ```bash
-cp ~/.config/omarchy/branding/screensaver.txt{,.bak}
-cp ~/.config/omarchy/themes/cyberpunk-2077/extras/screensaver.txt ~/.config/omarchy/branding/
+./install.sh --screensaver     # or run cyberpunk-screensaver any time
+cyberpunk-screensaver --restore   # put back the screensaver it replaced
 ```
 
 ## Cyberdeck: the Night City file browser
