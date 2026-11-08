@@ -9,9 +9,15 @@ accents...), then the keys that define the look of a chat are pinned
 explicitly: incoming messages coral on dark oxblood, outgoing cyan on dark
 teal, service notices gig-yellow.
 
-    build-theme.py <night colors.tdesktop-theme> <out.tdesktop-theme> [background.png]
+    build-theme.py <night colors.tdesktop-theme> <out.tdesktop-theme> [tiled.png]
+
+The night theme source is colors.tdesktop-theme inside
+https://raw.githubusercontent.com/telegramdesktop/tdesktop/dev/Telegram/Resources/night.tdesktop-theme
+(a zip). A background image named tiled.* is repeated across the chat, which
+is how tiled.png lays Cyberphone's grid and scanlines behind the messages.
 """
 import colorsys
+import pathlib
 import re
 import sys
 import zipfile
@@ -71,8 +77,13 @@ PINNED = {
     "msgOutServiceFg": "#a8fbff",
     "msgServiceBg": "#1c1016d0",
     "msgServiceFg": "#f3e600",
-    "historyComposeAreaBg": "#08070b",
-    "historyComposeAreaFg": "#ff6159",
+    # Matched to Cyberphone: near-black header and reply area, cyan typing
+    "topBarBg": "#040306",
+    "historyComposeAreaBg": "#040306",
+    "historyComposeAreaFg": "#5ef6ff",
+    "historyComposeAreaFgService": "#a3463f",
+    "historyOutIconFg": "#5ef6ff",
+    "historyOutIconFgSelected": "#a8fbff",
     "historyComposeIconFg": "#a3463f",
     "historyComposeIconFgOver": "#5ef6ff",
     "historySendIconFg": "#5ef6ff",
@@ -166,7 +177,8 @@ def main():
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("colors.tdesktop-theme", "\n".join(lines) + "\n")
         if background:
-            z.write(background, "background.png")
+            name = pathlib.Path(background).name
+            z.write(background, name if name.startswith("tiled.") else "background.png")
 
 
 if __name__ == "__main__":

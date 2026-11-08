@@ -1,0 +1,41 @@
+#!/bin/bash
+# Telegram Desktop in Rajdhani, matching Cyberphone. The theme
+# (extras/telegram/night-city.tdesktop-theme) does the colours; this runs
+# Telegram with a font configuration of its own, so only Telegram changes.
+#
+#   cyberpunk-telegram [args]   start Telegram (passes arguments through)
+#   cyberpunk-telegram --install  make the app launcher and links use it,
+#                                 and open the colour theme in Telegram
+#   cyberpunk-telegram --remove   back to the normal Telegram launcher
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+APPS="$HOME/.local/share/applications"
+DBUS="$HOME/.local/share/dbus-1/services"
+SELF="$HOME/.local/bin/cyberpunk-telegram"
+
+case ${1:-} in
+  --install)
+    src=/usr/share/applications/org.telegram.desktop.desktop
+    [[ -f $src ]] || { echo "Telegram Desktop is not installed (omarchy pkg add telegram-desktop)." >&2; exit 1; }
+    mkdir -p "$APPS" "$DBUS"
+    # Same entry, started through this script instead of D-Bus activation.
+    sed -e "s|^Exec=Telegram -- %U|Exec=$SELF -- %U|" -e "s|^Exec=Telegram -quit|Exec=$SELF -quit|" \
+        -e '/^DBusActivatable=/d' "$src" >"$APPS/org.telegram.desktop.desktop"
+    printf '[D-BUS Service]\nName=org.telegram.desktop\nExec=%s\n' "$SELF" >"$DBUS/org.telegram.desktop.service"
+    update-desktop-database "$APPS" >/dev/null 2>&1 || true
+    echo "Telegram now starts in Rajdhani (quit and reopen it if it is running)."
+    echo "To apply the colours: open $THEME_DIR/extras/telegram/night-city.tdesktop-theme"
+    echo "in Telegram (Settings > Chat Settings > Choose from file) and keep it."
+    exit 0
+    ;;
+  --remove)
+    rm -f "$APPS/org.telegram.desktop.desktop" "$DBUS/org.telegram.desktop.service"
+    echo "Telegram is back to its normal launcher and font."
+    exit 0
+    ;;
+esac
+
+export FONTCONFIG_FILE="$THEME_DIR/extras/telegram/fonts.conf"
+exec Telegram "$@"
