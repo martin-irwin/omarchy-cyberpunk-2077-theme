@@ -1,0 +1,319 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import qs.Commons
+import qs.Ui
+import "Model.js" as Model
+
+// NETRUNNERS: every machine on your tailnet, the way the DIAGNOSTICS panel
+// on kuroshi lists them. Data comes from `jack --json` (tailscale status plus
+// a 5-minute uptime cache for watched hosts). Enter or a click jacks in over
+// SSH in a new terminal; right-click copies the IP.
+//
+// Keys: Up/Down pick, Enter jack in, Esc close, Tab to the next panel.
+// Super+G (theme keybinding) runs `omarchy-shell cyberpunk.netrunners toggle`.
+Panel {
+  id: root
+  moduleName: "cyberpunk.netrunners"
+  ipcTarget: "cyberpunk.netrunners"
+  manageIpc: false
+
+  property var anchorItem: null
+  property var hostWidget: null
+  readonly property var barIdentity: hostWidget || root
+
+  readonly property string home: Quickshell.env("HOME") || ""
+  readonly property string jackPath: home + "/.local/bin/jack"
+  readonly property var watch: Model.cleanWatch(setting("watch", []))
+  readonly property int refreshMs: Math.max(15, Math.min(3600, Number(setting("refreshIntervalSec", 60)) || 60)) * 1000
+  // Development only: a saved `tailscale status --json` to show instead.
+  readonly property string statusFile: String(setting("statusFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
+
+  property var net: ({ self: { name: "", ip: "" }, peers: [] })
+  property bool loaded: false
+  property real nowMs: Date.now()
+  property int selected: 0
+
+  readonly property var rows: Model.rows(net && net.peers ? net.peers : [], nowMs)
+  readonly property int online: Model.onlineCount(net && net.peers ? net.peers : [])
+  readonly property string selfIp: net && net.self ? net.self.ip : ""
+
+  // Bar text, read by BarWidget.qml
+  readonly property string label: !loaded ? "TSNET …" : (selfIp !== "" ? "TSNET " + selfIp : "TSNET OFF")
+
+  function refresh() {
+    nowMs = Date.now()
+    statusProc.running = false
+    statusProc.running = true
+  }
+
+  function jackIn(row) {
+    if (!row || !root.bar) return
+    var name = Model.cleanName(row.name)
+    if (!name) return
+    root.close()
+    root.bar.run("'" + root.jackPath + "' --term " + name)
+  }
+
+  function copyIp(row) {
+    if (!row || !root.bar) return
+    var ip = Model.cleanIp(row.ip)
+    if (!ip) return
+    root.bar.run("printf %s " + ip + " | wl-copy")
+  }
+
+  function move(delta) {
+    if (rows.length === 0) return
+    selected = Math.max(0, Math.min(rows.length - 1, selected + delta))
+  }
+
+  // ---- Panel lifecycle, as in omarchy.weather / kuroshi.zonebar
+  property bool openedFromHotkey: false
+
+  function setCenterHoverRevealSuppressed(value) {
+    if (root.bar && typeof root.bar.setCenterHoverRevealSuppressed === "function")
+      root.bar.setCenterHoverRevealSuppressed(value)
+    else if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+      root.bar.centerHoverRevealSuppressed = value
+  }
+
+  function open() {
+    openedFromHotkey = false
+    setCenterHoverRevealSuppressed(false)
+    root.selected = 0
+    root.controller.show()
+    root.refresh()
+  }
+
+  function openFromHotkey() {
+    openedFromHotkey = true
+    root.selected = 0
+    root.controller.show()
+    root.refresh()
+    Qt.callLater(function() {
+      if (root.opened) setCenterHoverRevealSuppressed(true)
+    })
+  }
+
+  function close() {
+    setCenterHoverRevealSuppressed(false)
+    root.controller.hide()
+  }
+
+  function toggle() {
+    if (root.opened) root.close()
+    else root.openFromHotkey()
+  }
+
+  function switchPanel(direction) {
+    if (root.bar && typeof root.bar.switchPanelFrom === "function")
+      return root.bar.switchPanelFrom(root.barIdentity, direction)
+    return false
+  }
+
+  onWatchChanged: Qt.callLater(root.refresh)
+
+  Process {
+    id: statusProc
+    command: [root.jackPath, "--json"].concat(root.watch)
+    environment: root.statusFile !== "" ? ({ "JACK_STATUS_FILE": root.statusFile }) : ({})
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.net = Model.parse(text)
+        root.loaded = true
+        if (root.selected >= root.rows.length) root.selected = Math.max(0, root.rows.length - 1)
+      }
+    }
+  }
+
+  Timer {
+    interval: root.refreshMs
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root.refresh()
+  }
+
+  IpcHandler {
+    target: "cyberpunk.netrunners"
+
+    function open(): void { root.openFromHotkey() }
+    function close(): void { root.close() }
+    function show(): void { root.openFromHotkey() }
+    function hide(): void { root.close() }
+    function toggle(): void { root.toggle() }
+    function refresh(): void { root.refresh() }
+  }
+
+  KeyboardPanel {
+    id: panel
+    anchorItem: root.anchorItem
+    owner: root.barIdentity
+    bar: root.bar
+    open: root.opened
+    focusTarget: keyCatcher
+    contentWidth: panel.fittedContentWidth(Style.space(380))
+    contentHeight: panel.fittedContentHeight(column.implicitHeight)
+
+    readonly property color fg: root.bar ? root.bar.foreground : Color.foreground
+    readonly property string family: root.bar ? root.bar.fontFamily : Style.font.family
+
+    PanelKeyCatcher {
+      id: keyCatcher
+      anchors.fill: parent
+      onCloseRequested: root.close()
+      onTabRequested: function(direction) { root.switchPanel(direction) }
+      onMoveRequested: function(dx, dy) { if (dy !== 0) root.move(dy) }
+      onReturnRequested: root.jackIn(root.rows[root.selected])
+
+      Column {
+        id: column
+        width: parent.width
+        spacing: Style.space(4)
+
+        Item {
+          width: parent.width
+          height: header.implicitHeight
+
+          PanelSectionHeader {
+            id: header
+            anchors.left: parent.left
+            foreground: panel.fg
+            text: "NETRUNNERS"
+          }
+
+          Text {
+            anchors.right: parent.right
+            anchors.baseline: header.baseline
+            textFormat: Text.PlainText
+            text: root.selfIp !== ""
+              ? root.online + " ONLINE  //  " + (root.net.self.name || "").toUpperCase() + " " + root.selfIp
+              : ""
+            color: Color.accent
+            font.family: panel.family
+            font.pixelSize: Style.font.caption
+          }
+        }
+
+        Text {
+          visible: root.rows.length === 0
+          width: parent.width
+          wrapMode: Text.WordWrap
+          textFormat: Text.PlainText
+          text: !root.loaded ? "Scanning the net…"
+              : root.selfIp === "" ? "Tailscale is off on this deck."
+              : "No other machines on the tailnet."
+          color: Qt.darker(panel.fg, 1.4)
+          font.family: panel.family
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        Repeater {
+          model: root.rows
+
+          Rectangle {
+            id: row
+            required property var modelData
+            required property int index
+            readonly property bool current: index === root.selected
+            width: column.width
+            height: Style.spacing.popupRowHeight
+            radius: 0
+            color: current ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14)
+                 : rowMouse.containsMouse ? Style.hoverFill : "transparent"
+
+            // cyan bar on the left of the selected row, like the game's menus
+            Rectangle {
+              visible: row.current
+              anchors.left: parent.left
+              anchors.top: parent.top
+              anchors.bottom: parent.bottom
+              width: Style.space(3)
+              color: Color.accent
+            }
+
+            Row {
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(10)
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(8)
+
+              Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(7)
+                height: width
+                color: row.modelData.online ? Color.accent : "transparent"
+                border.width: row.modelData.online ? 0 : 1
+                border.color: Qt.darker(panel.fg, 1.8)
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: row.modelData.label + (row.modelData.watched ? "  ◆" : "")
+                color: row.current ? Color.accent : panel.fg
+                opacity: row.modelData.online ? 1.0 : 0.55
+                font.family: panel.family
+                font.pixelSize: Style.font.body
+                font.letterSpacing: 1
+              }
+            }
+
+            Row {
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(8)
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: row.modelData.detail
+                color: Qt.darker(panel.fg, 1.6)
+                font.family: panel.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: row.modelData.status
+                color: row.modelData.online ? Color.accent : Color.urgent
+                font.family: panel.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+            }
+
+            MouseArea {
+              id: rowMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              acceptedButtons: Qt.LeftButton | Qt.RightButton
+              onEntered: root.selected = row.index
+              onClicked: function(mouse) {
+                if (mouse.button === Qt.RightButton) root.copyIp(row.modelData)
+                else root.jackIn(row.modelData)
+              }
+            }
+          }
+        }
+
+        Text {
+          visible: root.rows.length > 0
+          width: parent.width
+          topPadding: Style.space(4)
+          horizontalAlignment: Text.AlignRight
+          textFormat: Text.PlainText
+          text: "ENTER JACK IN  ·  RIGHT-CLICK COPY IP  ·  ◆ WATCHED"
+          color: Qt.darker(panel.fg, 1.8)
+          font.family: panel.family
+          font.pixelSize: Style.font.caption
+          font.letterSpacing: 1
+        }
+      }
+    }
+  }
+}

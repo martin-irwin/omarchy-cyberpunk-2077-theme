@@ -1,0 +1,53 @@
+#!/bin/bash
+# Make this machine's Night City node wallpaper: its host name as the glitch
+# title and a NODE readout (OS, kernel, CPU, cores, memory, display, TSNET).
+# Sized for the largest monitor; saved first in the theme's backgrounds, so
+# it shows up in the background switcher for every Cyberpunk variant.
+#
+#   cyberpunk-node-wallpaper          make it and set it as the background
+#   cyberpunk-node-wallpaper --no-set make it only
+#   cyberpunk-node-wallpaper --res 3840x2160
+#
+# Needs Pillow: python-pillow (omarchy pkg add python-pillow), or uv.
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+DEST="$HOME/.config/omarchy/backgrounds/cyberpunk-2077"
+set_bg=1 res=""
+while (( $# )); do
+  case $1 in
+    --no-set) set_bg=0 ;;
+    --res) res=$2; shift ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+if [[ -z $res ]]; then
+  res=$(hyprctl monitors -j 2>/dev/null | jq -r 'max_by(.width * .height) | "\(.width)x\(.height)"' 2>/dev/null || true)
+  [[ $res =~ ^[0-9]+x[0-9]+$ ]] || res=1920x1080
+fi
+[[ $res =~ ^([0-9]+)x([0-9]+)$ ]] || { echo "bad resolution: $res" >&2; exit 1; }
+w=${BASH_REMATCH[1]} h=${BASH_REMATCH[2]}
+
+host=$(hostname | tr '[:upper:]' '[:lower:]')
+out="$DEST/00-node-$host.png"
+tsnet=$(tailscale ip -4 2>/dev/null | head -1 || true)
+args=("$out" "$THEME_DIR/fonts" "$w" "$h")
+[[ $tsnet =~ ^[0-9.]+$ ]] && args+=(--tsnet "$tsnet")
+
+if python3 -c 'import PIL' 2>/dev/null; then
+  python3 -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "${args[@]}" >/dev/null
+elif command -v uv >/dev/null; then
+  uv run -q --with pillow python -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "${args[@]}" >/dev/null
+else
+  echo "Needs Pillow: omarchy pkg add python-pillow   (then run this again)" >&2
+  exit 1
+fi
+echo "node wallpaper: $out (${w}x${h})"
+
+if (( set_bg )) && command -v omarchy >/dev/null; then
+  omarchy theme bg set "$out" >/dev/null 2>&1 || true
+fi

@@ -1,0 +1,136 @@
+#!/bin/bash
+# jack — jack in to another machine on your tailnet (Cyberpunk 2077 theme).
+#
+#   jack                 pick a host with fzf, then SSH in
+#   jack <host>          connect straight away (name or prefix: "jack om")
+#   jack --list          host table
+#   jack --json [W ...]  host status for the NETRUNNERS bar panel; W are
+#                        watched hosts, whose uptime is fetched over SSH
+#   jack --term <host>   open a new terminal window jacked in to <host>
+#
+# Hosts come live from `tailscale status --json`; phones are left out. The
+# login user is yours unless ~/.config/jack/users says otherwise
+# ("host user" per line). Uptime uses SSH with keys only (never prompts),
+# cached for 5 minutes in ~/.cache/jack/.
+
+set -o pipefail
+USERS_FILE="$HOME/.config/jack/users"
+CACHE="$HOME/.cache/jack"
+DEFAULT_USER=${JACK_USER:-$USER}
+
+# JACK_STATUS_FILE: read a saved `tailscale status --json` instead of asking
+# tailscale (for tests and for working on the panel without a tailnet).
+ts_status() {
+  if [[ -n ${JACK_STATUS_FILE:-} ]]; then cat "$JACK_STATUS_FILE"; else tailscale status --json 2>/dev/null; fi
+}
+
+# name<TAB>ip<TAB>os<TAB>online<TAB>lastSeen, online first
+hosts() {
+  ts_status | jq -r '
+    [.Peer // {} | .[] | select(.OS != "android" and .OS != "iOS")
+      | { name: ((.DNSName // .HostName) | split(".")[0] | ascii_downcase | gsub("[^a-z0-9-]"; "")),
+          ip: ((.TailscaleIPs[0] // "") | gsub("[^0-9a-f.:]"; "")),
+          os: ((.OS // "") | gsub("[^A-Za-z0-9]"; "")),
+          online: (.Online == true),
+          seen: ((.LastSeen // "") | gsub("[^0-9TZ:.+-]"; "")) }
+      | select(.name != "" and .ip != "") ]
+    | sort_by((if .online then 0 else 1 end), .name)[]
+    | [.name, .ip, .os, (.online | tostring), .seen] | @tsv' 2>/dev/null
+}
+
+user_for() {
+  local u=""
+  [[ -r $USERS_FILE ]] && u=$(awk -v h="$1" '!/^#/ && $1 == h { print $2; exit }' "$USERS_FILE")
+  echo "${u:-$DEFAULT_USER}"
+}
+
+# "12 days, 11:43" / "3:22" / "45 mins" (Linux or macOS uptime) → "12d 11h"
+short_uptime() {
+  local s=${1#*up } d=0 h=0 m=0
+  s=${s%%user*}; s=${s%,*}
+  [[ $s =~ ([0-9]+)\ day ]] && d=${BASH_REMATCH[1]}
+  [[ $s =~ ([0-9]+):([0-9]+) ]] && { h=$((10#${BASH_REMATCH[1]})); m=$((10#${BASH_REMATCH[2]})); }
+  [[ $s =~ ([0-9]+)\ min ]] && m=${BASH_REMATCH[1]}
+  [[ $s =~ ([0-9]+)\ hr ]] && h=${BASH_REMATCH[1]}
+  if (( d )); then echo "${d}d ${h}h"; elif (( h )); then echo "${h}h ${m}m"; else echo "${m}m"; fi
+}
+
+refresh_uptime() {
+  local h=$1 ip out
+  mkdir -p "$CACHE"
+  ip=$(hosts | awk -F'\t' -v n="$h" '$1 == n { print $2; exit }')
+  [[ -n $ip ]] || return
+  if out=$(timeout 12 ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$(user_for "$h")@$ip" uptime 2>/dev/null); then
+    short_uptime "$out" >"$CACHE/$h"
+  else
+    echo "-" >"$CACHE/$h"     # key refused: remember for an hour
+  fi
+}
+
+json() {
+  local watch=" $* " now self_ip self_name first=1 name ip os online seen f age up
+  now=$(date +%s)
+  read -r self_name self_ip < <(ts_status | jq -r '.Self | "\((.DNSName // .HostName) | split(".")[0] | ascii_downcase) \(.TailscaleIPs[0] // "")"' 2>/dev/null)
+  printf '{"self":{"name":"%s","ip":"%s"},"peers":[' "$self_name" "$self_ip"
+  while IFS=$'\t' read -r name ip os online seen; do
+    up=""
+    if [[ $online == true && $watch == *" $name "* ]]; then
+      f="$CACHE/$name"
+      age=$(( now - $(stat -c %Y "$f" 2>/dev/null || echo 0) ))
+      up=$(cat "$f" 2>/dev/null)
+      if { (( age > 300 )) && [[ $up != "-" ]]; } || (( age > 3600 )); then
+        (setsid "$0" --refresh-uptime "$name" >/dev/null 2>&1 </dev/null &)
+      fi
+      [[ $up == "-" ]] && up=""
+    fi
+    (( first )) || printf ','
+    first=0
+    # names are DNS labels and IPs/OS/timestamps are plain tokens: no escaping needed,
+    # but strip anything else just in case
+    printf '{"name":"%s","ip":"%s","os":"%s","online":%s,"seen":"%s","uptime":"%s","watched":%s}' \
+      "${name//[^a-z0-9-]/}" "${ip//[^0-9a-f.:]/}" "${os//[^A-Za-z0-9]/}" \
+      "$([[ $online == true ]] && echo true || echo false)" "${seen//[^0-9TZ:.+-]/}" \
+      "${up//[^0-9a-z ]/}" "$([[ $watch == *" $name "* ]] && echo true || echo false)"
+  done < <(hosts)
+  printf ']}\n'
+}
+
+connect() {
+  local name ip _rest user
+  IFS=$'\t' read -r name ip _rest < <(hosts | awk -F'\t' -v n="$1" '$1 == n || index($1, n) == 1 { print; exit }')
+  if [[ -z $ip ]]; then
+    printf '\e[31m✕ NO ROUTE TO %s\e[0m — not on the tailnet (jack --list)\n' "${1^^}" >&2
+    return 1
+  fi
+  user=$(user_for "$name")
+  printf '\e]2;JACK // %s\a' "${name^^}"
+  printf '\n\e[30;46m JACK IN \e[0;36m◤\e[0m \e[37m%s\e[0m \e[90m//\e[0m %s@%s\n\n' "${name^^}" "$user" "$ip"
+  ssh -o ConnectTimeout=8 "$user@$ip"
+  local rc=$?
+  printf '\n\e[37m◥\e[30;47m JACKED OUT \e[0m \e[90m%s · exit %s\e[0m\n' "${name^^}" "$rc"
+  return $rc
+}
+
+case ${1:-} in
+  --json) shift; json "$@" ;;
+  --refresh-uptime) refresh_uptime "$2" ;;
+  --list|-l)
+    hosts | while IFS=$'\t' read -r name ip os online _; do
+      printf '%-18s %-16s %-8s %s\n' "$name" "$ip" "$os" "$([[ $online == true ]] && echo ONLINE || echo OFFLINE)"
+    done ;;
+  --term)
+    [[ -n ${2:-} ]] || { echo "usage: jack --term <host>" >&2; exit 1; }
+    exec setsid xdg-terminal-exec --app-id=cyberpunk.jack --title="JACK // ${2^^}" -- "$0" "$2" --hold >/dev/null 2>&1 </dev/null ;;
+  "")
+    pick=$("$0" --list | fzf --height=~60% --layout=reverse --border=sharp --no-info \
+      --prompt='JACK IN// ' --header='TAILNET · enter to connect · esc to abort' \
+      --color='fg:7,bg:-1,hl:6,fg+:6,bg+:0,hl+:14,prompt:6,pointer:6,marker:3,header:8,border:8,gutter:-1') || exit 0
+    connect "${pick%% *}" ;;
+  -*) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)
+    connect "$1"; rc=$?
+    if [[ ${2:-} == --hold ]] && (( rc != 0 )); then
+      printf '\e[90mpress enter to close\e[0m'; read -r
+    fi
+    exit $rc ;;
+esac

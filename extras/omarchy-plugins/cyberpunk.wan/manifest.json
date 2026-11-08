@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "cyberpunk.wan",
+  "name": "Night City WAN status",
+  "version": "1.0.0",
+  "author": "Martin Irwin",
+  "license": "MIT",
+  "description": "Internet reachability and latency from a periodic ping. No other network lookups.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "WAN status",
+    "description": "WAN 21MS while the internet answers a ping, WAN DOWN when it doesn't",
+    "category": "Network",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "target": "1.1.1.1",
+      "intervalSec": 30
+    },
+    "schema": [
+      {
+        "key": "target",
+        "type": "string",
+        "label": "Host to ping (an IP address or host name)",
+        "defaultValue": "1.1.1.1"
+      },
+      {
+        "key": "intervalSec",
+        "type": "integer",
+        "label": "Check every (seconds)",
+        "min": 10,
+        "max": 3600,
+        "step": 10,
+        "defaultValue": 30
+      }
+    ]
+  }
+}

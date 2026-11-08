@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "cyberpunk.netrunners",
+  "name": "NETRUNNERS",
+  "version": "1.0.0",
+  "author": "Martin Irwin",
+  "license": "MIT",
+  "description": "Your tailnet IP in the bar; a panel of every machine on the tailnet with status, uptime and last seen, and Enter to jack in over SSH.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "NETRUNNERS",
+    "description": "TSNET IP; click or Super+G for the tailnet panel",
+    "category": "Network",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "watch": [],
+      "refreshIntervalSec": 60
+    },
+    "schema": [
+      {
+        "key": "watch",
+        "type": "array",
+        "label": "Watched hosts: always listed first, with uptime (over SSH, keys only)",
+        "defaultValue": []
+      },
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh every (seconds)",
+        "min": 15,
+        "max": 3600,
+        "step": 15,
+        "defaultValue": 60
+      }
+    ]
+  }
+}

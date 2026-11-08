@@ -27,6 +27,7 @@ a theme cannot do by itself:
 | Wallpapers | Downloads 30 official CDPR wallpapers sized for your monitor | `--no-wallpapers` (or `--all-wallpapers` for 50) |
 | Cyberdeck | Installs Yazi if missing, binds the Cyberdeck file browser to **Super+Alt+Y** | `--no-cyberdeck` |
 | Variants | Builds the Netrunner and Samurai colour variants (see below) | — |
+| Night City bar | Host badge, NETRUNNERS (tailnet + **Super+G** jack-in) and WAN latency in the bar, plus this machine's node wallpaper (see below) | `--no-netbar` |
 | Screensaver | Only with `--screensaver`: box-art logo screensaver | — |
 | Apply | Re-runs `omarchy theme set cyberpunk-2077` | — |
 
@@ -38,8 +39,7 @@ restores your previous monospace font. Downloaded wallpapers stay in
 
 ```bash
 git -C ~/.config/omarchy/themes/cyberpunk-2077 pull
-cyberpunk-variants                 # refresh the Netrunner and Samurai variants
-omarchy theme set cyberpunk-2077   # or whichever variant you use
+~/.config/omarchy/themes/cyberpunk-2077/install.sh --no-wallpapers   # refreshes variants, bar plugins, node wallpaper
 ```
 
 ## The palette
@@ -181,6 +181,51 @@ global rather than per-theme, so it's opt-in:
 ./install.sh --screensaver     # or run cyberpunk-screensaver any time
 cyberpunk-screensaver --restore   # put back the screensaver it replaced
 ```
+
+## The Night City bar
+
+Ported from **kuroshi**, a Sony Vaio P cyberdeck running the same palette on
+antiX. Three Omarchy shell plugins sit on the right of the bar, next to your
+own items, the way kuroshi's i3 bar reads:
+
+```
+[ OMINI ◤]  TSNET 100.64.0.10   WAN 9MS
+```
+
+| Widget | Shows | Click |
+|---|---|---|
+| `cyberpunk.node` | This machine's host name as a HUD badge in the accent colour | opens NETRUNNERS |
+| `cyberpunk.netrunners` | Your tailnet IP | opens NETRUNNERS |
+| `cyberpunk.wan` | Internet latency from one ping every 30 s (`WAN DOWN` when there's no answer) | checks now |
+
+**NETRUNNERS** (**Super+G**, or click) drops down a list of every machine on
+your tailnet: online ones first, with their OS, offline ones with when they
+were last seen. Up/Down picks, **Enter jacks in** (an SSH session in a
+floating terminal), right-click copies the IP, Esc closes. Phones are left
+out. `jack` does the same in a terminal: `jack` (fzf picker), `jack om`
+(name prefix), `jack --list`.
+
+- **Watched hosts** are listed first, with their uptime, fetched over SSH
+  with keys only (it never prompts) and cached for 5 minutes:
+  `omarchy bar set cyberpunk.netrunners watch '["omini"]' --json`
+- **Login names**: your own user name unless `~/.config/jack/users` says
+  otherwise, one `host user` per line.
+- Super+G was Omarchy's window grouping; that moves to **Super+Ctrl+G**.
+  Both live in `extras/hypr/cyberpunk-2077.lua`, which `--no-cyberdeck` skips.
+
+The WAN widget's ping (to `1.1.1.1`, settable with
+`omarchy bar set cyberpunk.wan target <host>`) is the only network traffic
+these plugins start on their own; there's no public-IP lookup. Uptime SSH goes
+only to watched hosts on your own tailnet.
+
+### Node wallpaper
+
+`cyberpunk-node-wallpaper` draws this machine's own wallpaper: its host name
+as the glitch title and a NODE readout of its OS, kernel, CPU, cores, memory,
+display and tailnet IP, at the size of your largest monitor. It's saved as
+`00-node-<host>.png`, first in the background switcher for every variant,
+and `install.sh` sets it as the background. It needs Pillow
+(`omarchy pkg add python-pillow`, which `install.sh` offers), or `uv`.
 
 ## Cyberdeck: the Night City file browser
 
