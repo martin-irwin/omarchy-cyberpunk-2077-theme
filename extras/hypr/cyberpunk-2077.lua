@@ -5,10 +5,11 @@
 o.bind("SUPER + ALT + Y", "Cyberdeck file browser", "cyberdeck")
 
 -- Float it centred like a terminal window on a desk in Night City, opaque.
+-- Sized relative to the monitor so it fits on scaled displays too.
 o.window("^cyberdeck\\.files$", { tag = "-default-opacity" })
 o.window("^cyberdeck\\.files$", {
   float = true,
   center = true,
-  size = { 1400, 820 },
+  size = { "monitor_w*0.85", "monitor_h*0.85" },
   opacity = "1 1",
 })
