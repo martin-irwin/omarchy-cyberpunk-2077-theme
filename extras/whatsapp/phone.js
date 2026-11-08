@@ -73,6 +73,16 @@ function addBackButton(main) {
 // most likely runs in here; add yours if the box never shows.
 const TYPING = /typing|recording|schreibt|tippt|nimmt .* auf|escribiendo|grabando|écrit|enregistre|sta scrivendo|digitando|pisze/i;
 
+// The scrolling element that holds the messages.
+function messageScroller(main) {
+  let el = main.querySelector('[data-testid="conversation-panel-messages"]');
+  while (el && el !== main) {
+    if (/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
 function typingBox(main) {
   let box = document.getElementById("nc-typing");
   const header = main && main.querySelector('[data-testid="conversation-header"]');
@@ -80,6 +90,8 @@ function typingBox(main) {
   const status = header && title ? header.querySelector('[data-testid="conversation-info-header"]') : null;
   const statusText = status ? status.innerText.replace(title.innerText, "") : "";
   const typing = Boolean(main) && document.body.classList.contains("nc-thread") && TYPING.test(statusText);
+  const wasShown = document.body.classList.contains("nc-typing-on");
+  document.body.classList.toggle("nc-typing-on", typing);
   if (!typing) {
     if (box) box.classList.remove("nc-show");
     return;
@@ -90,12 +102,20 @@ function typingBox(main) {
     box.innerHTML = "<i></i><i></i><i></i>";
     document.body.appendChild(box);
   }
+  // Line up with the incoming messages, just above the reply line.
+  const lastIn = [...main.querySelectorAll('.nc-in [data-testid="msg-container"]')].pop();
   const footer = main.querySelector("footer");
   const area = main.getBoundingClientRect();
-  const bottom = footer ? footer.getBoundingClientRect().top : area.bottom;
-  box.style.left = `${area.left + 24}px`;
-  box.style.top = `${bottom - 58}px`;
+  box.style.left = `${lastIn ? lastIn.getBoundingClientRect().left : area.left + 24}px`;
+  box.style.top = `${(footer ? footer.getBoundingClientRect().top : area.bottom) - 56}px`;
   box.classList.add("nc-show");
+  // phone.css adds room under the last message; keep the chat at the bottom.
+  if (!wasShown) {
+    const scroller = messageScroller(main);
+    if (scroller && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160) {
+      requestAnimationFrame(() => { scroller.scrollTop = scroller.scrollHeight; });
+    }
+  }
 }
 
 function update() {

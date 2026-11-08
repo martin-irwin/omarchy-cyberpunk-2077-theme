@@ -108,6 +108,12 @@
 /* ── Reply line: a terminal prompt ─────────────────────────────────────── */
 [data-testid="compose-box"] { background: #040306 !important; border-top: 1px solid #5a1e24; }
 [data-testid="compose-box"] > div { background: transparent !important; }
+[data-testid="conversation-compose-box-input"],
+[data-testid="conversation-compose-box-input"] * {
+  font-size: 15px !important;
+  letter-spacing: .02em !important;
+  line-height: 1.4 !important;
+}
 [data-testid="conversation-compose-box-input"] {
   font-family: "Share Tech Mono", monospace !important;
   color: #5ef6ff !important;
@@ -171,6 +177,8 @@ body:not(.nc-thread) .nc-back { display: none; }
   pointer-events: none;
 }
 #nc-typing.nc-show { display: flex; }
+/* Room under the last message while the typing box shows */
+body.nc-typing-on [data-testid="conversation-panel-messages"] { padding-bottom: 60px !important; }
 #nc-typing i {
   width: 7px;
   height: 7px;
