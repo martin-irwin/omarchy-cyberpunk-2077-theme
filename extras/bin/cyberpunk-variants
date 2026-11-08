@@ -20,7 +20,8 @@ THEMES="$HOME/.config/omarchy/themes"
 BACKGROUNDS="$HOME/.config/omarchy/backgrounds"
 VARIANTS=(netrunner samurai)
 # Everything else in the repo is tooling, docs or fonts, not theme files.
-THEME_FILES=(backgrounds btop.theme chromium.theme colors.toml icons.theme keyboard.rgb unlock.png shell.*.toml)
+# (The shell.*.toml overrides are globbed inside the theme dir, below.)
+THEME_FILES=(backgrounds btop.theme chromium.theme colors.toml icons.theme keyboard.rgb unlock.png)
 
 case ${1:-} in
   --remove)
@@ -41,7 +42,7 @@ for v in "${VARIANTS[@]}"; do
   dest="$THEMES/cyberpunk-2077-$v"
   rm -rf "$dest"
   mkdir -p "$dest"
-  (cd "$THEME_DIR" && cp -r "${THEME_FILES[@]}" "$dest/")
+  (cd "$THEME_DIR" && cp -r "${THEME_FILES[@]}" shell.*.toml "$dest/")
   python3 -I - "$v" "$dest" <<'PY'
 import pathlib, re, sys
 
