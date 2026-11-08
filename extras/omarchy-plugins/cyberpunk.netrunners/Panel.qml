@@ -29,23 +29,61 @@ Panel {
   // Development only: a saved `tailscale status --json` to show instead.
   readonly property string statusFile: String(setting("statusFile", "")).replace(/[^A-Za-z0-9._\/-]/g, "")
 
-  property var net: ({ self: { name: "", ip: "" }, peers: [] })
+  property var net: ({ self: { name: "", ip: "", state: "" }, peers: [] })
   property bool loaded: false
   property real nowMs: Date.now()
   property int selected: 0
+  property bool switching: false   // a connect/disconnect is in flight
 
   readonly property var rows: Model.rows(net && net.peers ? net.peers : [], nowMs)
   readonly property int online: Model.onlineCount(net && net.peers ? net.peers : [])
   readonly property string selfIp: net && net.self ? net.self.ip : ""
+  readonly property string tsState: net && net.self ? net.self.state : ""
+  readonly property bool connected: tsState === "Running" && selfIp !== ""
+  readonly property bool needsLogin: tsState === "NeedsLogin" || tsState === "NeedsMachineAuth"
+  readonly property bool missing: tsState === "Missing"
 
   // Bar text, read by BarWidget.qml
-  readonly property string label: !loaded ? "TSNET …" : (selfIp !== "" ? "TSNET " + selfIp : "TSNET OFF")
+  readonly property string label: !loaded ? "TSNET …"
+    : connected ? "TSNET " + selfIp
+    : missing ? "TSNET N/A"
+    : needsLogin ? "TSNET LOGIN"
+    : "TSNET OFF"
 
   function refresh() {
     nowMs = Date.now()
     statusProc.running = false
     statusProc.running = true
   }
+
+  // CONNECT / LOG IN / JACK OUT. jack does the work: `tailscale up` (opening
+  // the login page when this machine is logged out, and asking once via
+  // pkexec to let this user control Tailscale) or `tailscale down`. Status is
+  // re-read a few times while that settles.
+  function setConnected(on) {
+    if (!root.bar || root.missing) return
+    root.switching = true
+    root.bar.run("'" + root.jackPath + "' " + (on ? "--connect" : "--disconnect"))
+    settleTimer.ticks = 0
+    settleTimer.restart()
+  }
+
+  Timer {
+    id: settleTimer
+    property int ticks: 0
+    interval: 3000
+    repeat: true
+    onTriggered: {
+      ticks++
+      root.refresh()
+      if (ticks >= 10 || (ticks >= 2 && root.connected !== root._wasConnected)) {
+        stop()
+        root.switching = false
+      }
+    }
+  }
+  property bool _wasConnected: false
+  onSwitchingChanged: if (switching) _wasConnected = connected
 
   function jackIn(row) {
     if (!row || !root.bar) return
@@ -165,7 +203,10 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onMoveRequested: function(dx, dy) { if (dy !== 0) root.move(dy) }
-      onReturnRequested: root.jackIn(root.rows[root.selected])
+      onReturnRequested: {
+        if (root.connected) root.jackIn(root.rows[root.selected])
+        else if (!root.missing && !root.switching) root.setConnected(true)
+      }
 
       Column {
         id: column
@@ -202,11 +243,47 @@ Panel {
           wrapMode: Text.WordWrap
           textFormat: Text.PlainText
           text: !root.loaded ? "Scanning the net…"
-              : root.selfIp === "" ? "Tailscale is off on this deck."
+              : root.missing ? "Tailscale isn't installed on this deck."
+              : root.needsLogin ? "This deck isn't logged in to your tailnet."
+              : !root.connected ? "This deck is off the tailnet."
               : "No other machines on the tailnet."
           color: Qt.darker(panel.fg, 1.4)
           font.family: panel.family
           font.pixelSize: Style.font.bodySmall
+        }
+
+        // Big CONNECT / LOG IN button when this machine is off the tailnet
+        Rectangle {
+          id: connectButton
+          visible: root.loaded && !root.connected && !root.missing
+          width: parent.width
+          height: Style.spacing.popupRowHeight
+          radius: 0
+          color: connectMouse.containsMouse || keyCatcher.activeFocus ? Color.accent : "transparent"
+          border.width: 1
+          border.color: Color.accent
+
+          Text {
+            anchors.centerIn: parent
+            textFormat: Text.PlainText
+            text: root.switching ? "JACKING IN…"
+                : root.needsLogin ? "▶  LOG IN TO TAILNET"
+                : "▶  CONNECT TO TAILNET"
+            color: connectMouse.containsMouse || keyCatcher.activeFocus ? Color.background : Color.accent
+            font.family: panel.family
+            font.pixelSize: Style.font.body
+            font.bold: true
+            font.letterSpacing: 2
+          }
+
+          MouseArea {
+            id: connectMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            enabled: !root.switching
+            onClicked: root.setConnected(true)
+          }
         }
 
         Repeater {
@@ -301,17 +378,46 @@ Panel {
           }
         }
 
-        Text {
-          visible: root.rows.length > 0
+        Item {
+          visible: root.connected
           width: parent.width
-          topPadding: Style.space(4)
-          horizontalAlignment: Text.AlignRight
-          textFormat: Text.PlainText
-          text: "ENTER JACK IN  ·  RIGHT-CLICK COPY IP  ·  ◆ WATCHED"
-          color: Qt.darker(panel.fg, 1.8)
-          font.family: panel.family
-          font.pixelSize: Style.font.caption
-          font.letterSpacing: 1
+          height: footerHint.implicitHeight + Style.space(4)
+
+          // JACK OUT: take this machine off the tailnet (tailscale down)
+          Text {
+            id: jackOut
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            textFormat: Text.PlainText
+            text: root.switching ? "JACKING OUT…" : "◥ JACK OUT"
+            color: jackOutMouse.containsMouse ? Color.urgent : Qt.darker(panel.fg, 1.5)
+            font.family: panel.family
+            font.pixelSize: Style.font.caption
+            font.letterSpacing: 1
+
+            MouseArea {
+              id: jackOutMouse
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              enabled: !root.switching
+              onClicked: root.setConnected(false)
+            }
+          }
+
+          Text {
+            id: footerHint
+            visible: root.rows.length > 0
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            textFormat: Text.PlainText
+            text: "ENTER JACK IN  ·  RIGHT-CLICK COPY IP  ·  ◆ WATCHED"
+            color: Qt.darker(panel.fg, 1.8)
+            font.family: panel.family
+            font.pixelSize: Style.font.caption
+            font.letterSpacing: 1
+          }
         }
       }
     }

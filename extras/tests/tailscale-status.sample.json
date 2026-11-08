@@ -1,4 +1,5 @@
 {
+  "BackendState": "Running",
   "Self": {
     "HostName": "deck",
     "DNSName": "deck.example-tailnet.ts.net.",

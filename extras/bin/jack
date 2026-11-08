@@ -25,10 +25,14 @@ ts_status() {
 }
 
 # name<TAB>ip<TAB>os<TAB>online<TAB>lastSeen, online first
+# jq: a node's short name from its DNS name, else its host name ("" when neither)
+JQ_NAME='def nodename: ((.DNSName // "") | split(".")[0] // "") as $d
+  | (if $d != "" then $d else (.HostName // "") end) | ascii_downcase | gsub("[^a-z0-9-]"; "");'
+
 hosts() {
-  ts_status | jq -r '
+  ts_status | jq -r "$JQ_NAME"'
     [.Peer // {} | .[] | select(.OS != "android" and .OS != "iOS")
-      | { name: ((.DNSName // .HostName) | split(".")[0] | ascii_downcase | gsub("[^a-z0-9-]"; "")),
+      | { name: nodename,
           ip: ((.TailscaleIPs[0] // "") | gsub("[^0-9a-f.:]"; "")),
           os: ((.OS // "") | gsub("[^A-Za-z0-9]"; "")),
           online: (.Online == true),
@@ -68,10 +72,19 @@ refresh_uptime() {
 }
 
 json() {
-  local watch=" $* " now self_ip self_name first=1 name ip os online seen f age up
+  local watch=" $* " now self_ip self_name state first=1 name ip os online seen f age up
   now=$(date +%s)
-  read -r self_name self_ip < <(ts_status | jq -r '.Self | "\((.DNSName // .HostName) | split(".")[0] | ascii_downcase) \(.TailscaleIPs[0] // "")"' 2>/dev/null)
-  printf '{"self":{"name":"%s","ip":"%s"},"peers":[' "$self_name" "$self_ip"
+  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null; then
+    state=Missing
+  else
+    # fields tab-separated so an empty name or IP can't shift the others
+    IFS=$'\t' read -r state self_name self_ip < <(ts_status | jq -r "$JQ_NAME"'
+      [(.BackendState // "NoState"), (.Self // {} | nodename), ((.Self.TailscaleIPs // [])[0] // "")] | @tsv' 2>/dev/null)
+    state=${state:-Stopped}
+  fi
+
+  printf '{"self":{"name":"%s","ip":"%s","state":"%s"},"peers":[' \
+    "${self_name//[^a-z0-9-]/}" "${self_ip//[^0-9a-f.:]/}" "${state//[^A-Za-z]/}"
   while IFS=$'\t' read -r name ip os online seen; do
     up=""
     if [[ $online == true && $watch == *" $name "* ]]; then
@@ -95,6 +108,62 @@ json() {
   printf ']}\n'
 }
 
+notify() { notify-send -a NETRUNNERS "$1" "${2:-}" 2>/dev/null || echo "$1 ${2:-}"; }
+
+# Bring this machine onto the tailnet: start it if it's stopped, or open the
+# login page if it's logged out. If tailscale refuses because this user may
+# not control it, ask once (pkexec) to make the user its operator, as
+# Omarchy's own Tailscale panel does, then try again.
+tailnet_up() {
+  local state log pid url tried_operator=0
+  state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "NoState"')
+  [[ $state == Running ]] && { notify "Already jacked in to the tailnet"; return 0; }
+  log=$(mktemp)
+  trap 'rm -f "$log"' RETURN
+  while :; do
+    : >"$log"
+    # `tailscale up` waits until a login completes, so it runs in the
+    # background while we watch its output for the login link.
+    setsid tailscale up >"$log" 2>&1 </dev/null &
+    pid=$!
+    for _ in $(seq 1 40); do
+      sleep 0.5
+      url=$(grep -oE 'https://login\.tailscale\.com/[A-Za-z0-9/_-]+' "$log" | head -1)
+      if [[ -n $url ]]; then
+        xdg-open "$url" >/dev/null 2>&1 &
+        notify "Log in to your tailnet" "Finish in the browser; this deck joins when you're done"
+        return 0
+      fi
+      kill -0 "$pid" 2>/dev/null || break
+    done
+    if grep -qiE 'access denied|denied|sudo|operator' "$log" && (( ! tried_operator )); then
+      tried_operator=1
+      kill "$pid" 2>/dev/null
+      notify "One-time permission" "Allowing $USER to switch Tailscale on and off"
+      pkexec tailscale set --operator="$USER" || { notify "Tailscale permission refused"; return 1; }
+      continue
+    fi
+    break
+  done
+  state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "NoState"')
+  if [[ $state == Running ]]; then
+    notify "Jacked in to the tailnet" "$(tailscale ip -4 2>/dev/null | head -1)"
+  else
+    notify "Couldn't connect to the tailnet" "$(tr '\n' ' ' <"$log" | cut -c1-160)"
+    return 1
+  fi
+}
+
+tailnet_down() {
+  if tailscale down 2>/dev/null; then
+    notify "Jacked out of the tailnet"
+  elif pkexec tailscale set --operator="$USER" && tailscale down; then
+    notify "Jacked out of the tailnet"
+  else
+    notify "Couldn't disconnect from the tailnet"; return 1
+  fi
+}
+
 connect() {
   local name ip _rest user
   IFS=$'\t' read -r name ip _rest < <(hosts | awk -F'\t' -v n="$1" '$1 == n || index($1, n) == 1 { print; exit }')
@@ -114,6 +183,8 @@ connect() {
 case ${1:-} in
   --json) shift; json "$@" ;;
   --refresh-uptime) refresh_uptime "$2" ;;
+  --connect) tailnet_up ;;
+  --disconnect) tailnet_down ;;
   --list|-l)
     hosts | while IFS=$'\t' read -r name ip os online _; do
       printf '%-18s %-16s %-8s %s\n' "$name" "$ip" "$os" "$([[ $online == true ]] && echo ONLINE || echo OFFLINE)"

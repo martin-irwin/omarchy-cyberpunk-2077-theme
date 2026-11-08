@@ -162,7 +162,15 @@ if (( netbar )); then
   # Place them only if they aren't on the bar yet, so a re-run keeps your own
   # arrangement. On the right, like kuroshi: [HOST ◤] TSNET … WAN …
   on_bar() { jq -e --arg id "$1" '[.bar.layout[]?[]?.id] | index($id) != null' "$SHELL_JSON" >/dev/null 2>&1; }
-  on_bar cyberpunk.netrunners || omarchy bar put cyberpunk.netrunners --section right --index 0 >/dev/null 2>&1 || true
+  # Anchored after the tray arrow, not by index: `put --index 0` on the right
+  # section pulls items out of the tray drawer (seen with Superwhisper).
+  if ! on_bar cyberpunk.netrunners; then
+    if on_bar omarchy.tray; then
+      omarchy bar put cyberpunk.netrunners --after omarchy.tray >/dev/null 2>&1 || true
+    else
+      omarchy bar put cyberpunk.netrunners --section right >/dev/null 2>&1 || true
+    fi
+  fi
   on_bar cyberpunk.wan || omarchy bar put cyberpunk.wan --after cyberpunk.netrunners >/dev/null 2>&1 || true
   on_bar cyberpunk.node || omarchy bar put cyberpunk.node --before cyberpunk.netrunners >/dev/null 2>&1 || true
 

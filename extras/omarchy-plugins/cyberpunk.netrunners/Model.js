@@ -12,11 +12,16 @@ function cleanIp(s) { s = String(s || ""); return IP_RE.test(s) ? s : "" }
 function cleanToken(s, max) { return String(s || "").replace(/[^A-Za-z0-9 ]/g, "").slice(0, max || 16) }
 
 function parse(text) {
-  var out = { self: { name: "", ip: "" }, peers: [] }
+  var out = { self: { name: "", ip: "", state: "" }, peers: [] }
   var data
   try { data = JSON.parse(String(text || "")) } catch (e) { return out }
   if (!data || typeof data !== "object") return out
-  if (data.self) out.self = { name: cleanName(data.self.name), ip: cleanIp(data.self.ip) }
+  if (data.self) out.self = {
+    name: cleanName(data.self.name),
+    ip: cleanIp(data.self.ip),
+    // Running | Stopped | NeedsLogin | NeedsMachineAuth | Starting | NoState | Missing
+    state: String(data.self.state || "").replace(/[^A-Za-z]/g, "").slice(0, 20)
+  }
   var peers = Array.isArray(data.peers) ? data.peers.slice(0, 200) : []
   for (var i = 0; i < peers.length; i++) {
     var p = peers[i] || {}
