@@ -62,6 +62,10 @@ settings.update({
     "hideNotificationsButton": True,
     "hideDownloadButton": True,
     "hideSplitModeButton": True,
+    "hideRecipesButton": True,
+    "hideCollapseButton": True,
+    "hideSettingsButton": True,      # Settings stay in the menu bar (Alt)
+    "serviceRibbonWidth": 35,        # Ferdium's slimmest sidebar; it can't be removed
 })
 json.dump(settings, open(path, "w"), indent=2)
 PY
