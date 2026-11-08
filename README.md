@@ -163,6 +163,17 @@ so the theme looks right before the download:
   slanted, with clipped corners.
 - `00-netwatch.jpg`: a "NIGHT CITY" net-access screen.
 
+## Screensaver
+
+`extras/screensaver.txt` is CYBERPUNK 2077 as block art, set in Chakra Petch
+like the title wallpaper, for Omarchy's screensaver. The screensaver text is
+global rather than per-theme, so it isn't installed automatically:
+
+```bash
+cp ~/.config/omarchy/branding/screensaver.txt{,.bak}
+cp ~/.config/omarchy/themes/cyberpunk-2077/extras/screensaver.txt ~/.config/omarchy/branding/
+```
+
 ## Cyberdeck: the Night City file browser
 
 **Super+Alt+Y** opens Yazi in a floating terminal, skinned like the computers
