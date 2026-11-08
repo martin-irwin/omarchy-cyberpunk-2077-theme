@@ -1,0 +1,48 @@
+#!/bin/bash
+# Skin WhatsApp in Ferdium as V's phone, and give Ferdium itself the Night City
+# colours (dark mode, coral accent, square corners).
+#
+# Add WhatsApp in Ferdium once first (Settings > Available services > WhatsApp),
+# then run this. Re-run it if a Ferdium update resets the WhatsApp recipe.
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+CONFIG="$HOME/.config/Ferdium"
+SKIN="$THEME_DIR/extras/whatsapp/night-city.css"
+
+if [[ ! -d $CONFIG ]]; then
+  echo "Ferdium has not been run yet. Start it, add WhatsApp, then run this again."
+  exit 1
+fi
+
+if [[ -d $CONFIG/recipes/whatsapp ]]; then
+  cp "$SKIN" "$CONFIG/recipes/whatsapp/user.css"
+  echo "WhatsApp skin installed (reload the WhatsApp service to see it)"
+else
+  echo "WhatsApp is not added in Ferdium yet: add it, then run this again for the skin."
+fi
+
+# Ferdium rewrites settings.json on exit, so only change it while it is closed.
+if pgrep -x ferdium >/dev/null; then
+  echo "Close Ferdium and run this again to apply the Night City app colours."
+  exit 0
+fi
+python3 -I - "$CONFIG/config/settings.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+try:
+    settings = json.load(open(path))
+except FileNotFoundError:
+    settings = {}
+settings.update({
+    "darkMode": True,
+    "adaptableDarkMode": False,
+    "accentColor": "#FF6159",
+    "progressbarAccentColor": "#5EF6FF",
+    "serviceWebviewBorderRadius": 0,
+    "webviewPaddingSize": 0,
+})
+json.dump(settings, open(path, "w"), indent=2)
+PY
+echo "Ferdium set to dark mode with the coral accent"

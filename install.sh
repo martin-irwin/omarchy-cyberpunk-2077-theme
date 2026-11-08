@@ -46,7 +46,7 @@ say() { printf '\e[38;2;94;246;255m::\e[0m \e[38;2;255;97;89m%s\e[0m\n' "$*"; }
 
 if (( uninstall )); then
   say "Removing Cyberdeck launcher and Hyprland extras"
-  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$HYPR_DIR/cyberpunk-2077.lua"
+  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$BIN_DIR/cyberpunk-ferdium" "$HYPR_DIR/cyberpunk-2077.lua"
   "$THEME_DIR/extras/bin/cyberpunk-variants" --remove
   [[ -f $HYPR_DIR/hyprland.lua ]] && sed -i '\#pcall(require, "hypr.cyberpunk-2077")#d' "$HYPR_DIR/hyprland.lua"
 
@@ -114,6 +114,13 @@ fi
 say "Building the Netrunner and Samurai colour variants"
 ln -sfn "$THEME_DIR/extras/bin/cyberpunk-variants" "$BIN_DIR/cyberpunk-variants"
 "$THEME_DIR/extras/bin/cyberpunk-variants" >/dev/null
+
+# Ferdium WhatsApp skin, if Ferdium is set up on this machine
+ln -sfn "$THEME_DIR/extras/bin/cyberpunk-ferdium" "$BIN_DIR/cyberpunk-ferdium"
+if [[ -d $HOME/.config/Ferdium/recipes/whatsapp ]]; then
+  say "Skinning WhatsApp in Ferdium"
+  "$THEME_DIR/extras/bin/cyberpunk-ferdium" | sed 's/^/   /' || true
+fi
 
 # 6. Apply (keeps a variant if one is already in use)
 current_theme=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
