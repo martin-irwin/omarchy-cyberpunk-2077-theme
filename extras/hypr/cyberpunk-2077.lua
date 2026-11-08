@@ -1,14 +1,26 @@
 -- Cyberpunk 2077 theme extras, loaded from ~/.config/hypr/hyprland.lua by
 -- the theme's install.sh. Safe to delete together with that require line.
 
+-- o.rebind (replace an existing binding) arrived after Omarchy 4.0.6; where
+-- it's missing, do what it does: drop the old binding, then bind the new one.
+local function rebind(keys, description, dispatcher, options)
+  if o.rebind then return o.rebind(keys, description, dispatcher, options) end
+  if hl.unbind then pcall(hl.unbind, keys) end
+  return o.bind(keys, description, dispatcher, options)
+end
+
 -- Super+Alt+Y: the Cyberdeck file browser (Yazi, Night City flavor).
 o.bind("SUPER + ALT + Y", "Cyberdeck file browser", "cyberdeck")
 
 -- Super+G: jack in. Opens the NETRUNNERS bar panel (cyberpunk.netrunners):
 -- arrows pick a machine on your tailnet, Enter opens an SSH session to it.
 -- Omarchy's window grouping moves from Super+G to Super+Ctrl+G.
-o.rebind("SUPER + G", "Jack in (NETRUNNERS)", "omarchy-shell cyberpunk.netrunners toggle")
-o.bind("SUPER + CTRL + G", "Toggle window grouping", hl.dsp.group.toggle())
+rebind("SUPER + G", "Jack in (NETRUNNERS)", "omarchy-shell cyberpunk.netrunners toggle")
+rebind("SUPER + CTRL + G", "Toggle window grouping", hl.dsp.group.toggle())
+
+-- Super+Shift+Alt+G: WhatsApp as V's phone (Cyberphone) instead of
+-- Omarchy's plain WhatsApp web app on the same key.
+rebind("SUPER + SHIFT + ALT + G", "Cyberphone (WhatsApp)", "cyberphone")
 
 -- jack sessions open in their own terminal window, floated like a deck
 o.window("^cyberpunk\\.jack$", {

@@ -311,7 +311,7 @@ the script) with every colour remapped by role.
 
 ## Cyberphone: WhatsApp as V's phone
 
-**Cyberphone** (in the app launcher, or run `cyberphone`) opens WhatsApp in
+**Cyberphone** (**Super+Shift+Alt+G**, the app launcher, or `cyberphone`) opens WhatsApp in
 its own window, reshaped like the messages screen on V's phone:
 
 - the contact list titled MESSAGES, names in caps, red-tinted square portraits

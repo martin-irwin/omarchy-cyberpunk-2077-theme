@@ -160,19 +160,31 @@ if (( netbar )); then
   sleep 1
   for id in "${NETBAR_PLUGINS[@]}"; do omarchy-plugin-enable "$id" >/dev/null 2>&1 || true; done
   # Place them only if they aren't on the bar yet, so a re-run keeps your own
-  # arrangement. On the right, like kuroshi: [HOST ◤] TSNET … WAN …
+  # arrangement. On the right after the tray arrow, like kuroshi:
+  #   [<] [HOST ◤] TSNET … WAN …
+  # `put` adds each to the right section; the `move` pass then sets the order
+  # (put's own --after/--before landed them in the wrong order on Omarchy
+  # 4.0.6, and `put --index 0` pulled items out of the tray drawer).
   on_bar() { jq -e --arg id "$1" '[.bar.layout[]?[]?.id] | index($id) != null' "$SHELL_JSON" >/dev/null 2>&1; }
-  # Anchored after the tray arrow, not by index: `put --index 0` on the right
-  # section pulls items out of the tray drawer (seen with Superwhisper).
-  if ! on_bar cyberpunk.netrunners; then
-    if on_bar omarchy.tray; then
-      omarchy bar put cyberpunk.netrunners --after omarchy.tray >/dev/null 2>&1 || true
-    else
-      omarchy bar put cyberpunk.netrunners --section right >/dev/null 2>&1 || true
+  added=()
+  for id in cyberpunk.node cyberpunk.netrunners cyberpunk.wan; do
+    if ! on_bar "$id"; then
+      omarchy bar put "$id" --section right >/dev/null 2>&1 || true
+      added+=("$id")
     fi
+  done
+  if (( ${#added[@]} )); then
+    prev=""
+    on_bar omarchy.tray && prev=omarchy.tray
+    for id in cyberpunk.node cyberpunk.netrunners cyberpunk.wan; do
+      if [[ -n $prev ]]; then
+        omarchy bar move "$id" --after "$prev" >/dev/null 2>&1 || true
+      else
+        omarchy bar move "$id" --section right --index 0 >/dev/null 2>&1 || true
+      fi
+      prev=$id
+    done
   fi
-  on_bar cyberpunk.wan || omarchy bar put cyberpunk.wan --after cyberpunk.netrunners >/dev/null 2>&1 || true
-  on_bar cyberpunk.node || omarchy bar put cyberpunk.node --before cyberpunk.netrunners >/dev/null 2>&1 || true
 
   # This machine's node wallpaper (needs Pillow)
   if ! python3 -c 'import PIL' 2>/dev/null && ! command -v uv >/dev/null; then
