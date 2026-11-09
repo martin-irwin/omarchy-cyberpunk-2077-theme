@@ -16,7 +16,18 @@ set -uo pipefail
 
 WS="${COMMS_WORKSPACE:-10}"
 PHONE_CLASS='^chrome-web\.whatsapp\.com__-Default$'
-TG_CLASS='^org\.telegram\.desktop$'
+# Telegram: Cybergram (Telegram Web, fully skinned) when it's installed,
+# else Telegram Desktop with the colour theme
+if [[ -x $HOME/.local/bin/cybergram ]]; then
+  TG_CLASS='^chrome-web\.telegram\.org__a_-Default$'
+  TG_LAUNCH=("$HOME/.local/bin/cybergram")
+elif [[ -x $HOME/.local/bin/cyberpunk-telegram ]]; then
+  TG_CLASS='^org\.telegram\.desktop$'
+  TG_LAUNCH=("$HOME/.local/bin/cyberpunk-telegram")
+else
+  TG_CLASS='^org\.telegram\.desktop$'
+  TG_LAUNCH=(Telegram)
+fi
 
 dispatch() { hyprctl dispatch "$1" >/dev/null 2>&1; }
 addr_of() { hyprctl clients -j | jq -r --arg c "$1" '[.[] | select(.class | test($c))][0].address // empty'; }
@@ -36,19 +47,15 @@ launch() {
 phone=$(addr_of "$PHONE_CLASS")
 tg=$(addr_of "$TG_CLASS")
 [[ -n $phone ]] || launch "$HOME/.local/bin/cyberphone"
-if [[ -z $tg ]]; then
-  if [[ -x $HOME/.local/bin/cyberpunk-telegram ]] && command -v Telegram >/dev/null; then
-    launch "$HOME/.local/bin/cyberpunk-telegram"
-  elif command -v Telegram >/dev/null; then
-    launch Telegram
-  fi
+if [[ -z $tg ]] && command -v "${TG_LAUNCH[0]}" >/dev/null; then
+  launch "${TG_LAUNCH[@]}"
 fi
 
 # Pull both onto COMMS once their windows exist (new ones open here anyway;
 # running ones may be elsewhere). Give a starting app up to 20 s.
 for _ in $(seq 1 40); do
   phone=$(addr_of "$PHONE_CLASS"); tg=$(addr_of "$TG_CLASS")
-  [[ -n $phone && ( -n $tg || ! $(command -v Telegram) ) ]] && break
+  [[ -n $phone && ( -n $tg || -z $(command -v "${TG_LAUNCH[0]}") ) ]] && break
   sleep 0.5
 done
 # WhatsApp on the left, Telegram on the right

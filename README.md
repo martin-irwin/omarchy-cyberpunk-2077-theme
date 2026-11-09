@@ -311,10 +311,32 @@ folders, or **Ctrl+L** and paste
 
 **Super+Shift+Alt+T** opens Telegram (or focuses it).
 
+## Cybergram: Telegram as V's phone
+
+A Telegram Desktop theme can only change colours, so its bubbles and
+portraits stay round. **Cybergram** (**Super+Shift+Alt+T**, the app
+launcher, or `cybergram`) is the Telegram twin of Cyberphone: Telegram Web A
+in its own app window, reshaped by `extras/telegram-web/night-city.css`.
+
+- Coral text on near-black, cyan and dark teal for your messages, gig-yellow
+  links and date chips
+- Square bubbles with coral or cyan HUD edges and no tails, square
+  red-tinted portraits, names in caps
+- The grid with scanlines behind the chat, Rajdhani throughout
+
+Log in once with the QR code (Telegram on your phone: Settings → Devices →
+Link Desktop Device). `cybergram --remove` deletes its profile and login.
+
+Like the WhatsApp skin, it overrides Telegram Web's own colour and
+corner-radius variables instead of generated class names, so it survives most
+updates. `build-skin.py` rebuilds it from `telegram-web-vars.txt` (a dump of
+those variables) and `phone.css` (shapes).
+
 ## COMMS: WhatsApp and Telegram side by side
 
 **Super+Shift+Alt+C** (`cyberpunk-comms`) switches to COMMS, workspace 10,
-with Cyberphone on the left and Telegram on the right, 50/50. It starts
+with Cyberphone on the left and Cybergram (or Telegram Desktop, without
+Cybergram) on the right, 50/50. It starts
 whichever isn't running and brings the other over from wherever it is. Press
 it again on COMMS to go back to where you were. **Super+0** reaches COMMS too,
 and the bar shows it while it has windows (`COMMS_WORKSPACE=<n>` picks

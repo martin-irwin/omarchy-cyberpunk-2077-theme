@@ -22,8 +22,10 @@ rebind("SUPER + CTRL + G", "Toggle window grouping", hl.dsp.group.toggle())
 -- Super+Shift+Alt+G: WhatsApp as V's phone (Cyberphone) instead of
 -- Omarchy's plain WhatsApp web app on the same key.
 rebind("SUPER + SHIFT + ALT + G", "Cyberphone (WhatsApp)", "omarchy-launch-or-focus whatsapp cyberphone")
--- Super+Shift+Alt+T: Telegram, in Rajdhani with the Night City theme
-rebind("SUPER + SHIFT + ALT + T", "Telegram", "omarchy-launch-or-focus org.telegram.desktop cyberpunk-telegram")
+-- Super+Shift+Alt+T: Telegram as V's phone (Cybergram, Telegram Web with the
+-- Night City skin). Telegram Desktop with the colour theme is still there,
+-- from the app launcher or cyberpunk-telegram.
+rebind("SUPER + SHIFT + ALT + T", "Cybergram (Telegram)", "omarchy-launch-or-focus web.telegram.org cybergram")
 -- Super+Shift+Alt+C: the COMMS workspace, WhatsApp and Telegram side by side
 rebind("SUPER + SHIFT + ALT + C", "COMMS: WhatsApp + Telegram", "cyberpunk-comms")
 
