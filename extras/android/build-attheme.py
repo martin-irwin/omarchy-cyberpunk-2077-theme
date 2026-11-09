@@ -32,6 +32,7 @@ tdesktop = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tdesktop)
 remap = tdesktop.remap
 PEERS = tdesktop.PEERS
+USERPICS = tdesktop.USERPICS
 
 # Night City palette
 INK, VOID, DEEP = "0d0b10", "08070b", "040306"
@@ -232,14 +233,19 @@ PINNED = {
     "profile_verifiedCheck": INK,
 }
 
-# Telegram's peer colours (group names, placeholder portraits), as on desktop
+# Telegram's peer colours, as on desktop: group names keep the full set,
+# placeholder portraits are coral/cyan HUD badges with dark initials
 AVATARS = ["Red", "Orange", "Violet", "Green", "Cyan", "Blue", "Pink"]
-for name, colour in zip(AVATARS, PEERS):
-    c = colour.lstrip("#")
-    PINNED[f"avatar_background{name}"] = c
-    PINNED[f"avatar_background2{name}"] = c
+for name, colour, pic in zip(AVATARS, PEERS, USERPICS):
+    c, p = colour.lstrip("#"), pic.lstrip("#")
+    PINNED[f"avatar_background{name}"] = p
+    PINNED[f"avatar_background2{name}"] = p
     PINNED[f"avatar_name{name}"] = c
     PINNED[f"chat_inReplyNameText{name}"] = c
+PINNED["avatar_backgroundSaved"] = CYAN
+PINNED["avatar_background2Saved"] = CYAN
+PINNED["avatar_backgroundArchived"] = OXBLOOD
+PINNED["avatar_backgroundArchivedHidden"] = OXBLOOD
 
 LINE = re.compile(r"^([A-Za-z0-9_]+)=(-?\d+|#[0-9a-fA-F]{6,8})$")
 
