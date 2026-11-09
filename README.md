@@ -304,7 +304,19 @@ goes through the script. `cyberpunk-telegram --remove` undoes it.
 
 Then open the theme file in Telegram (*Settings → Chat Settings → Choose from
 file*) and keep it. Telegram themes can't change shapes, so its bubbles stay
-rounded; everything else follows the phone.
+rounded; everything else follows the phone. The theme folder is under the
+hidden `~/.config`: in the file picker press **Ctrl+H** to show hidden
+folders, or **Ctrl+L** and paste
+`~/.config/omarchy/themes/cyberpunk-2077/extras/telegram/night-city.tdesktop-theme`.
+
+**Super+Shift+Alt+T** opens Telegram (or focuses it).
+
+## COMMS: WhatsApp and Telegram side by side
+
+**Super+Shift+Alt+C** (`cyberpunk-comms`) switches to a COMMS workspace with
+Cyberphone on the left and Telegram on the right, 50/50. It starts whichever
+isn't running and brings the other over from wherever it is.
+`cyberpunk-comms --back` returns to where you were.
 
 `build-theme.py` rebuilds the theme from Telegram's own night theme (link in
 the script) with every colour remapped by role.

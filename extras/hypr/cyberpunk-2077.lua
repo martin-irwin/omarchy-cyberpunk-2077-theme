@@ -18,9 +18,14 @@ o.bind("SUPER + ALT + Y", "Cyberdeck file browser", "cyberdeck")
 rebind("SUPER + G", "Jack in (NETRUNNERS)", "omarchy-shell cyberpunk.netrunners toggle")
 rebind("SUPER + CTRL + G", "Toggle window grouping", hl.dsp.group.toggle())
 
+-- Comms. Each key opens the app, or focuses it when it's already running.
 -- Super+Shift+Alt+G: WhatsApp as V's phone (Cyberphone) instead of
 -- Omarchy's plain WhatsApp web app on the same key.
-rebind("SUPER + SHIFT + ALT + G", "Cyberphone (WhatsApp)", "cyberphone")
+rebind("SUPER + SHIFT + ALT + G", "Cyberphone (WhatsApp)", "omarchy-launch-or-focus whatsapp cyberphone")
+-- Super+Shift+Alt+T: Telegram, in Rajdhani with the Night City theme
+rebind("SUPER + SHIFT + ALT + T", "Telegram", "omarchy-launch-or-focus org.telegram.desktop cyberpunk-telegram")
+-- Super+Shift+Alt+C: the COMMS workspace, WhatsApp and Telegram side by side
+rebind("SUPER + SHIFT + ALT + C", "COMMS: WhatsApp + Telegram", "cyberpunk-comms")
 
 -- jack sessions open in their own terminal window, floated like a deck
 o.window("^cyberpunk\\.jack$", {

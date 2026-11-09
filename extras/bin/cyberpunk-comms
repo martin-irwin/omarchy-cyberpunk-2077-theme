@@ -1,0 +1,55 @@
+#!/bin/bash
+# COMMS: WhatsApp (Cyberphone) and Telegram side by side on a workspace of
+# their own. Super+Shift+Alt+C (theme keybinding).
+#
+#   cyberpunk-comms          go to COMMS; start whichever of the two isn't
+#                            running, and bring both there, 50/50
+#   cyberpunk-comms --back   return to the workspace you came from
+#
+# Telegram goes through cyberpunk-telegram (Rajdhani) when that's installed.
+# A Hyprland workspace with two windows splits them side by side on its own.
+
+set -uo pipefail
+
+WS="name:COMMS"
+PHONE_CLASS='^chrome-web\.whatsapp\.com__-Default$'
+TG_CLASS='^org\.telegram\.desktop$'
+
+dispatch() { hyprctl dispatch "$1" >/dev/null 2>&1; }
+addr_of() { hyprctl clients -j | jq -r --arg c "$1" '[.[] | select(.class | test($c))][0].address // empty'; }
+
+if [[ ${1:-} == --back ]]; then
+  dispatch 'hl.dsp.focus({ workspace = "previous" })'
+  exit 0
+fi
+
+dispatch "hl.dsp.focus({ workspace = \"$WS\" })"
+
+launch() {
+  setsid "$@" >/dev/null 2>&1 </dev/null &
+}
+
+phone=$(addr_of "$PHONE_CLASS")
+tg=$(addr_of "$TG_CLASS")
+[[ -n $phone ]] || launch "$HOME/.local/bin/cyberphone"
+if [[ -z $tg ]]; then
+  if [[ -x $HOME/.local/bin/cyberpunk-telegram ]] && command -v Telegram >/dev/null; then
+    launch "$HOME/.local/bin/cyberpunk-telegram"
+  elif command -v Telegram >/dev/null; then
+    launch Telegram
+  fi
+fi
+
+# Pull both onto COMMS once their windows exist (new ones open here anyway;
+# running ones may be elsewhere). Give a starting app up to 20 s.
+for _ in $(seq 1 40); do
+  phone=$(addr_of "$PHONE_CLASS"); tg=$(addr_of "$TG_CLASS")
+  [[ -n $phone && ( -n $tg || ! $(command -v Telegram) ) ]] && break
+  sleep 0.5
+done
+# WhatsApp on the left, Telegram on the right
+for a in "$phone" "$tg"; do
+  [[ -n $a ]] && dispatch "hl.dsp.window.move({ workspace = \"$WS\", follow = false, window = \"address:$a\" })"
+done
+[[ -n $phone ]] && dispatch "hl.dsp.focus({ window = \"address:$phone\" })"
+exit 0

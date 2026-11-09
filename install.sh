@@ -70,7 +70,7 @@ if (( uninstall )); then
   [[ -f $HYPR_DIR/hyprland.lua ]] && sed -i '\#pcall(require, "hypr.cyberpunk-2077")#d' "$HYPR_DIR/hyprland.lua"
 
   say "Removing the Night City bar (node badge, NETRUNNERS, WAN)"
-  rm -f "$BIN_DIR/jack" "$BIN_DIR/cyberpunk-node-wallpaper"
+  rm -f "$BIN_DIR/jack" "$BIN_DIR/cyberpunk-node-wallpaper" "$BIN_DIR/cyberpunk-comms"
   for id in "${NETBAR_PLUGINS[@]}"; do rm -rf "${PLUGIN_DIR:?}/$id"; done
   if [[ -f $SHELL_JSON ]] && command -v jq >/dev/null; then
     tmp=$(mktemp)
@@ -203,6 +203,7 @@ fi
 
 # Cyberphone: WhatsApp as V's phone in its own window (opened on demand)
 ln -sfn "$THEME_DIR/extras/bin/cyberphone" "$BIN_DIR/cyberphone"
+ln -sfn "$THEME_DIR/extras/bin/cyberpunk-comms" "$BIN_DIR/cyberpunk-comms"   # Super+Shift+Alt+C
 "$THEME_DIR/extras/bin/cyberphone" --install >/dev/null
 
 # Telegram Desktop in Rajdhani, if it is installed
