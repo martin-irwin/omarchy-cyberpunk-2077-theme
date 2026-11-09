@@ -313,10 +313,12 @@ folders, or **Ctrl+L** and paste
 
 ## COMMS: WhatsApp and Telegram side by side
 
-**Super+Shift+Alt+C** (`cyberpunk-comms`) switches to a COMMS workspace with
-Cyberphone on the left and Telegram on the right, 50/50. It starts whichever
-isn't running and brings the other over from wherever it is.
-`cyberpunk-comms --back` returns to where you were.
+**Super+Shift+Alt+C** (`cyberpunk-comms`) switches to COMMS, workspace 10,
+with Cyberphone on the left and Telegram on the right, 50/50. It starts
+whichever isn't running and brings the other over from wherever it is. Press
+it again on COMMS to go back to where you were. **Super+0** reaches COMMS too,
+and the bar shows it while it has windows (`COMMS_WORKSPACE=<n>` picks
+another number).
 
 `build-theme.py` rebuilds the theme from Telegram's own night theme (link in
 the script) with every colour remapped by role.

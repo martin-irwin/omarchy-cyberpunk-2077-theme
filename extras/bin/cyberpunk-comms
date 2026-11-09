@@ -2,23 +2,27 @@
 # COMMS: WhatsApp (Cyberphone) and Telegram side by side on a workspace of
 # their own. Super+Shift+Alt+C (theme keybinding).
 #
-#   cyberpunk-comms          go to COMMS; start whichever of the two isn't
-#                            running, and bring both there, 50/50
+#   cyberpunk-comms          go to COMMS (or, when you're already there, back
+#                            to where you were); start whichever of the two
+#                            isn't running, and bring both there, 50/50
 #   cyberpunk-comms --back   return to the workspace you came from
 #
+# COMMS is workspace 10, so Super+0 reaches it too and the bar shows it while
+# it has windows. COMMS_WORKSPACE=<n> picks another.
 # Telegram goes through cyberpunk-telegram (Rajdhani) when that's installed.
 # A Hyprland workspace with two windows splits them side by side on its own.
 
 set -uo pipefail
 
-WS="name:COMMS"
+WS="${COMMS_WORKSPACE:-10}"
 PHONE_CLASS='^chrome-web\.whatsapp\.com__-Default$'
 TG_CLASS='^org\.telegram\.desktop$'
 
 dispatch() { hyprctl dispatch "$1" >/dev/null 2>&1; }
 addr_of() { hyprctl clients -j | jq -r --arg c "$1" '[.[] | select(.class | test($c))][0].address // empty'; }
 
-if [[ ${1:-} == --back ]]; then
+current=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty')
+if [[ ${1:-} == --back || $current == "$WS" ]]; then
   dispatch 'hl.dsp.focus({ workspace = "previous" })'
   exit 0
 fi
