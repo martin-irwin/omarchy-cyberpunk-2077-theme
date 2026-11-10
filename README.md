@@ -273,6 +273,31 @@ stays cream; you only see it once. If a Ferdium update resets the WhatsApp
 recipe, re-run `cyberpunk-ferdium`. The skin also works in a browser with a
 user-CSS extension such as Stylus on `web.whatsapp.com`.
 
+## Slack: the Night City userstyle
+
+`cyberslack --install` adds **Slack** to the app launcher (through
+`omarchy-webapp-install`). It opens app.slack.com as a Chromium web app with a
+profile of its own (`~/.local/share/cyberslack`), so nothing touches the Slack
+desktop app or your main browser.
+
+The skin is `extras/slack/night-city.user.css`, a CSS-only userstyle for the
+[Stylus](https://github.com/openstyles/stylus) extension:
+
+1. `cyberslack --stylus` opens Stylus in the Chrome Web Store, in Slack's
+   profile. Click *Add to Chrome*.
+2. In Stylus, *Manage → Import* (or paste the file into a new style), or open
+   the file's raw GitHub URL in that profile and click *Install style*.
+
+Every colour, both fonts and the scanline strength (`--nc-scanlines: 0` turns
+them off) are `:root` variables at the top. The comment block under the header
+lists the selectors most likely to break after a Slack update.
+
+As a fallback for when the userstyle is off, set Slack's own theme
+(*Preferences → Appearance*): **Dark**, custom theme navigation `#0D0B14`,
+selected `#FCEE0A`, presence `#00F0FF`, notifications `#FF003C`.
+
+`cyberslack --remove` deletes the launcher entry and the profile (and its login).
+
 ## Decisions made while building this
 
 - **Coral, not yellow, is the lead colour.** Most community Cyberpunk themes

@@ -56,7 +56,7 @@ say() { printf '\e[38;2;94;246;255m::\e[0m \e[38;2;255;97;89m%s\e[0m\n' "$*"; }
 
 if (( uninstall )); then
   say "Removing Cyberdeck launcher and Hyprland extras"
-  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$BIN_DIR/cyberpunk-ferdium" "$BIN_DIR/cyberpunk-screensaver" "$BIN_DIR/cyberphone" "$BIN_DIR/cyberpunk-telegram" "$HOME/.local/share/applications/cyberphone.desktop" "$HYPR_DIR/cyberpunk-2077.lua"
+  rm -f "$BIN_DIR/cyberdeck" "$BIN_DIR/cyberpunk-wallpapers" "$BIN_DIR/cyberpunk-variants" "$BIN_DIR/cyberpunk-ferdium" "$BIN_DIR/cyberpunk-screensaver" "$BIN_DIR/cyberphone" "$BIN_DIR/cyberslack" "$BIN_DIR/cyberpunk-telegram" "$HOME/.local/share/applications/cyberphone.desktop" "$HYPR_DIR/cyberpunk-2077.lua"
   "$THEME_DIR/extras/bin/cyberpunk-variants" --remove
   "$THEME_DIR/extras/bin/cyberpunk-screensaver" --restore 2>/dev/null || true
   "$THEME_DIR/extras/bin/cyberpunk-telegram" --remove >/dev/null 2>&1 || true
@@ -130,6 +130,10 @@ ln -sfn "$THEME_DIR/extras/bin/cyberpunk-variants" "$BIN_DIR/cyberpunk-variants"
 # Cyberphone: WhatsApp as V's phone in its own window (opened on demand)
 ln -sfn "$THEME_DIR/extras/bin/cyberphone" "$BIN_DIR/cyberphone"
 "$THEME_DIR/extras/bin/cyberphone" --install >/dev/null
+
+# Cyberslack: Slack web app with the Night City userstyle. Only the command is
+# linked; run `cyberslack --install` yourself if you want the launcher entry.
+ln -sfn "$THEME_DIR/extras/bin/cyberslack" "$BIN_DIR/cyberslack"
 
 # Telegram Desktop in Rajdhani, if it is installed
 ln -sfn "$THEME_DIR/extras/bin/cyberpunk-telegram" "$BIN_DIR/cyberpunk-telegram"
