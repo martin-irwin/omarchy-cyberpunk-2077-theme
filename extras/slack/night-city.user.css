@@ -66,6 +66,10 @@
 
   --nc-display: "Rajdhani", "Orbitron", "Barlow Condensed", sans-serif;
   --nc-mono:    "Share Tech Mono", "JetBrainsMono Nerd Font", ui-monospace, monospace;
+  /* Body text: messages, composer, menus. Default is Slack's own stack, so
+     nothing changes until you edit it, e.g. "Inter", sans-serif or
+     var(--nc-display). Headings, names and metadata keep the two above. */
+  --nc-body:    "Slack-Lato", "Slack-Fractions", "appleLogo", sans-serif;
 
   /* Scanlines: 0 turns them off; .04–.08 is "faint". */
   --nc-scanlines: .05;
@@ -279,6 +283,11 @@ body::after {
 }
 
 /* ═══ Messages ══════════════════════════════════════════════════════════ */
+/* Body font (--nc-body); size stays Slack's, so it stays readable. */
+body, .p-client, [data-qa="message-text"], .p-rich_text_section,
+.c-message_kit__blocks, .c-wysiwyg_container .ql-editor {
+  font-family: var(--nc-body) !important;
+}
 /* Body keeps Slack's sans at Slack's size: readable first. */
 [data-qa="message-text"], .p-rich_text_section, .c-message_kit__blocks {
   color: var(--nc-text) !important;
