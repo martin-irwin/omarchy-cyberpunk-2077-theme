@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -219,7 +220,7 @@ Panel {
     contentWidth: panel.fittedContentWidth(Style.space(380))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
 
-    readonly property color fg: root.bar ? root.bar.foreground : Color.foreground
+    readonly property color fg: root.bar ? root.bar.foreground : Commons.Color.foreground
     readonly property string family: root.bar ? root.bar.fontFamily : Style.font.family
 
     PanelKeyCatcher {
@@ -257,7 +258,7 @@ Panel {
               ? root.online + " ONLINE  //  " + (root.net.self.name || "").toUpperCase() + " " + root.selfIp
               : root.viaHost ? root.online + " ONLINE  //  VIA HOST"
               : ""
-            color: Color.accent
+            color: Commons.Color.accent
             font.family: panel.family
             font.pixelSize: Style.font.caption
           }
@@ -289,9 +290,9 @@ Panel {
           width: parent.width
           height: Style.spacing.popupRowHeight
           radius: 0
-          color: connectMouse.containsMouse || keyCatcher.activeFocus ? Color.accent : "transparent"
+          color: connectMouse.containsMouse || keyCatcher.activeFocus ? Commons.Color.accent : "transparent"
           border.width: 1
-          border.color: Color.accent
+          border.color: Commons.Color.accent
 
           Text {
             anchors.centerIn: parent
@@ -299,7 +300,7 @@ Panel {
             text: root.switching ? "JACKING IN…"
                 : root.needsLogin ? "▶  LOG IN TO TAILNET"
                 : "▶  CONNECT TO TAILNET"
-            color: connectMouse.containsMouse || keyCatcher.activeFocus ? Color.background : Color.accent
+            color: connectMouse.containsMouse || keyCatcher.activeFocus ? Commons.Color.background : Commons.Color.accent
             font.family: panel.family
             font.pixelSize: Style.font.body
             font.bold: true
@@ -327,7 +328,7 @@ Panel {
             width: column.width
             height: Style.spacing.popupRowHeight
             radius: 0
-            color: current ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.14)
+            color: current ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.14)
                  : rowMouse.containsMouse ? Style.hoverFill : "transparent"
 
             // cyan bar on the left of the selected row, like the game's menus
@@ -337,7 +338,7 @@ Panel {
               anchors.top: parent.top
               anchors.bottom: parent.bottom
               width: Style.space(3)
-              color: Color.accent
+              color: Commons.Color.accent
             }
 
             Row {
@@ -350,7 +351,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Style.space(7)
                 height: width
-                color: row.modelData.online ? Color.accent : "transparent"
+                color: row.modelData.online ? Commons.Color.accent : "transparent"
                 border.width: row.modelData.online ? 0 : 1
                 border.color: Qt.darker(panel.fg, 1.8)
               }
@@ -359,7 +360,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
                 text: row.modelData.label + (row.modelData.watched ? "  ◆" : "")
-                color: row.current ? Color.accent : panel.fg
+                color: row.current ? Commons.Color.accent : panel.fg
                 opacity: row.modelData.online ? 1.0 : 0.55
                 font.family: panel.family
                 font.pixelSize: Style.font.body
@@ -386,7 +387,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
                 text: row.modelData.status
-                color: row.modelData.online ? Color.accent : Color.urgent
+                color: row.modelData.online ? Commons.Color.accent : Commons.Color.urgent
                 font.family: panel.family
                 font.pixelSize: Style.font.bodySmall
                 font.bold: true
@@ -422,7 +423,7 @@ Panel {
             anchors.bottom: parent.bottom
             textFormat: Text.PlainText
             text: root.switching ? "JACKING OUT…" : "◥ JACK OUT"
-            color: jackOutMouse.containsMouse ? Color.urgent : Qt.darker(panel.fg, 1.5)
+            color: jackOutMouse.containsMouse ? Commons.Color.urgent : Qt.darker(panel.fg, 1.5)
             font.family: panel.family
             font.pixelSize: Style.font.caption
             font.letterSpacing: 1

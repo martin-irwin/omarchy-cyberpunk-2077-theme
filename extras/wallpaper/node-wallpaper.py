@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Night City node wallpaper: this machine's name as the glitch title.
 
-    node-wallpaper.py <out.png> <fonts-dir> <width> <height> [--tsnet IP]
+    node-wallpaper.py <out.png> <fonts-dir> <width> <height> [--tsnet IP] [--palette default|netrunner|samurai]
 
 Ported from the kuroshi cyberdeck theme. Everything is generated: Rajdhani
 and Share Tech Mono (SIL OFL) on drawn geometry, no CD Projekt artwork.
@@ -34,6 +34,22 @@ def u(v): return int(round(v * S))
 BG = (13, 11, 16); BG2 = (6, 5, 8); PANEL = (24, 13, 18); OX = (90, 30, 36)
 INK = BG; CORAL = (255, 97, 89); CORAL_DIM = (163, 70, 63); CYAN = (94, 246, 255)
 YEL = (243, 230, 0); MUTED = (125, 68, 70); TEAL = (16, 53, 58)
+SHADOW = CYAN                       # the title's glitch shadow
+
+# --palette netrunner|samurai recolours the card to match that variant.
+# CORAL is the main ink and CYAN the highlight whatever their actual colour.
+palette = sys.argv[sys.argv.index("--palette") + 1] if "--palette" in sys.argv else "default"
+if palette == "netrunner":          # the in-game PC interface: cyan on teal-black
+    BG = (10, 14, 14); BG2 = (5, 8, 8); PANEL = (14, 28, 32); OX = (31, 64, 66)
+    CORAL = (94, 246, 255); CORAL_DIM = (44, 156, 165); CYAN = (248, 244, 244)
+    MUTED = (46, 106, 112); TEAL = (42, 20, 24); SHADOW = (63, 169, 255)
+elif palette == "samurai":          # box-art yellow, cyan highlights
+    BG = (12, 11, 8); BG2 = (6, 6, 4); PANEL = (26, 24, 8); OX = (74, 69, 16)
+    CORAL = (243, 230, 0); CORAL_DIM = (156, 147, 0); MUTED = (107, 102, 30)
+    YEL = (255, 0, 60)
+elif palette != "default":
+    sys.exit(f"unknown palette: {palette}")
+INK = BG
 
 
 def font(rel, size): return ImageFont.truetype(str(FONTS / rel), max(8, u(size)))
@@ -103,7 +119,7 @@ def glitch_text(im, xy, text, fnt, seed, slices=3):
     layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
     ld = ImageDraw.Draw(layer)
     x, y = xy
-    ld.text((x - u(6), y + u(3)), text, font=fnt, fill=CYAN + (140,))
+    ld.text((x - u(6), y + u(3)), text, font=fnt, fill=SHADOW + (140,))
     ld.text((x, y), text, font=fnt, fill=CORAL + (255,))
     bbox = ld.textbbox((x, y), text, font=fnt)
     rnd = random.Random(seed)

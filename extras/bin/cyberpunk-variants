@@ -3,7 +3,7 @@
 # themes, so they show up in Omarchy's own theme picker next to the original:
 #
 #   cyberpunk-2077            coral text, cyan highlights (the in-game computers)
-#   cyberpunk-2077-netrunner  cyan text, coral highlights (scanner / netrunner UI)
+#   cyberpunk-2077-netrunner  cyan text, white selection, teal frames (the in-game PC interface)
 #   cyberpunk-2077-samurai    yellow text, cyan highlights (the Samurai / box-art look)
 #
 # Each variant is a copy of the theme with its colours swapped, and shares the
@@ -27,7 +27,14 @@ case ${1:-} in
   --remove)
     for v in "${VARIANTS[@]}"; do
       rm -rf "${THEMES:?}/cyberpunk-2077-$v"
-      [[ -L $BACKGROUNDS/cyberpunk-2077-$v ]] && rm "$BACKGROUNDS/cyberpunk-2077-$v"
+      bg="$BACKGROUNDS/cyberpunk-2077-$v"
+      if [[ -L $bg ]]; then
+        rm "$bg"
+      elif [[ -d $bg ]]; then
+        # only the shared-wallpaper links and the generated node cards
+        find "$bg" -maxdepth 1 \( -type l -o -name '00-node-*.png' \) -delete
+        rmdir "$bg" 2>/dev/null || true
+      fi
     done
     exit 0
     ;;
@@ -51,12 +58,15 @@ variant, dest = sys.argv[1], pathlib.Path(sys.argv[2])
 # Old colour -> new colour, applied in one pass so swaps don't chain.
 MAPS = {
     "netrunner": {
-        # coral text family <-> cyan highlight family
+        # The in-game PC interface (e-mail / messages / local network screens):
+        # cyan text and tabs on teal-black, the selected row a lighter box with
+        # near-white text, dim teal frames. Red only marks status.
         "FF6159": "5EF6FF", "A3463F": "2C9CA5", "FF8C82": "A8FBFF", "7D4446": "2E6A70",
-        "5EF6FF": "FF6159", "A8FBFF": "FF8C82",
-        "10353A": "2A1418", "2A1418": "10353A", "14454B": "3A1A20",
+        # highlights go white rather than coral, like the game's selected rows
+        "5EF6FF": "F8F4F4", "A8FBFF": "FFFFFF",
+        "10353A": "1F4042", "2A1418": "10353A",
         # panels and frames lean teal instead of oxblood
-        "1C1016": "0E1C20", "5A1E24": "17474D", "0D0B10": "0A0D10",
+        "1C1016": "0E1C20", "5A1E24": "1F4042", "0D0B10": "0A0E0E",
     },
     "samurai": {
         "FF6159": "F3E600", "A3463F": "9C9300", "FF8C82": "FFF35C", "7D4446": "6B661E",
@@ -66,7 +76,8 @@ MAPS = {
     },
 }
 mapping = MAPS[variant]
-hexre = re.compile(r"(?<![0-9A-Fa-f])(" + "|".join(mapping) + r")(?![0-9A-Fa-f])", re.I)
+# A colour may carry an alpha suffix (rgba(5A1E24AA)); it still counts.
+hexre = re.compile(r"(?<![0-9A-Fa-f])(" + "|".join(mapping) + r")(?=(?:[0-9A-Fa-f]{2})?(?![0-9A-Fa-f]))", re.I)
 swap = lambda text: hexre.sub(lambda m: mapping[m.group(1).upper()], text)
 
 # In colors.toml only the UI roles change; the 16 ANSI colours stay put so
@@ -75,17 +86,40 @@ ROLES = {"accent", "cursor", "background", "dark_background", "darker_background
          "lighter_background", "foreground", "dark_foreground", "light_foreground",
          "selection", "selection_background", "selection_foreground", "muted",
          "hyprland_active_border", "hyprland_inactive_border"}
+# Roles a plain swap gets wrong. Netrunner: the accent (bar badge, TSNET,
+# WAN, focused window) stays cyan like the game's tabs and headings, and the
+# selection is the game's lighter teal box with white text.
+OVERRIDES = {
+    "netrunner": {
+        "accent": '"#5EF6FF"', "cursor": '"#5EF6FF"',
+        "selection_background": '"#1F4042"', "selection_foreground": '"#F8F4F4"',
+        "hyprland_active_border": '"rgb(5EF6FF)"',
+    },
+}.get(variant, {})
 colors = dest / "colors.toml"
 lines = []
 for line in colors.read_text().splitlines():
     key = line.split("=", 1)[0].strip()
-    lines.append(swap(line) if key in ROLES else line)
+    if key in OVERRIDES:
+        line = f"{key} = {OVERRIDES[key]}"
+    elif key in ROLES:
+        line = swap(line)
+    lines.append(line)
 colors.write_text("\n".join(lines) + "\n")
 
 for path in [dest / "btop.theme", dest / "keyboard.rgb", *dest.glob("shell.*.toml")]:
     path.write_text(swap(path.read_text()))
 PY
-  # Share the downloaded official wallpapers with the original theme.
-  [[ -e $BACKGROUNDS/cyberpunk-2077-$v ]] || ln -s cyberpunk-2077 "$BACKGROUNDS/cyberpunk-2077-$v"
+  # Share the downloaded official wallpapers with the original theme, one
+  # link each, so the variant's folder can also hold its own node wallpaper
+  # in its own colours (cyberpunk-node-wallpaper draws it).
+  bg="$BACKGROUNDS/cyberpunk-2077-$v"
+  [[ -L $bg ]] && rm "$bg"
+  mkdir -p "$bg"
+  find "$bg" -maxdepth 1 -type l -delete
+  for f in "$BACKGROUNDS/cyberpunk-2077"/*; do
+    name=${f##*/}
+    [[ -f $f && $name != 00-node-* ]] && ln -s "../cyberpunk-2077/$name" "$bg/$name"
+  done
   echo "Built cyberpunk-2077-$v"
 done

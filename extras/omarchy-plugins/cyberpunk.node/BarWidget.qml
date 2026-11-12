@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // USER@HOST as a Night City HUD badge: background-coloured text on the
@@ -44,14 +45,14 @@ BarWidget {
     x: 0
     height: Math.round(root.barSize * 0.72)
     width: label.implicitWidth + Style.space(12)
-    color: Color.accent
+    color: Commons.Color.accent
 
     Text {
       id: label
       anchors.centerIn: parent
       textFormat: Text.PlainText
       text: root.vertical ? root.shortLabel : root.label
-      color: Color.background
+      color: Commons.Color.background
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
       font.pixelSize: Style.font.bodySmall
       font.bold: true
@@ -70,7 +71,7 @@ BarWidget {
     onPaint: {
       var ctx = getContext("2d")
       ctx.reset()
-      ctx.fillStyle = Color.accent
+      ctx.fillStyle = Commons.Color.accent
       ctx.beginPath()
       ctx.moveTo(0, 0)
       ctx.lineTo(width, 0)
@@ -79,7 +80,7 @@ BarWidget {
       ctx.fill()
     }
     Connections {
-      target: Color
+      target: Commons.Color
       function onAccentChanged() { edge.requestPaint() }
     }
   }

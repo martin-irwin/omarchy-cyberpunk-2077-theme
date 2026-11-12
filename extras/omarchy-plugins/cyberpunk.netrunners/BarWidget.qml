@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Bar slot for NETRUNNERS: shows `TSNET <ip>` read off Panel.qml, which owns
@@ -53,7 +54,7 @@ BarWidget {
     bar: root.bar
     text: root.vertical ? "TS" : root.displayText
     // cyan like kuroshi's TSNET readout (follows the theme's accent)
-    foreground: Color.accent
+    foreground: Commons.Color.accent
     horizontalMargin: 8.75
     verticalPadding: 8.75
     tooltipText: ""

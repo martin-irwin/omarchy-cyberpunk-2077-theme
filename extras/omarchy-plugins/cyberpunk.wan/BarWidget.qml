@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // WAN reachability from one ping every intervalSec (default 30 s) to a fixed
@@ -29,10 +30,10 @@ BarWidget {
     if (state === "down") return "WAN DOWN"
     return "WAN …"
   }
-  readonly property color tint: state === "down" ? Color.urgent
+  readonly property color tint: state === "down" ? Commons.Color.urgent
                               : state === "slow" ? "#F3E600"
-                              : state === "up" ? Color.accent
-                              : Color.muted
+                              : state === "up" ? Commons.Color.accent
+                              : Commons.Color.muted
 
   implicitWidth: vertical ? barSize : readout.implicitWidth + Style.space(14)
   implicitHeight: vertical ? readout.implicitHeight + Style.space(8) : barSize

@@ -62,7 +62,7 @@ api_token() {
 # saved API response instead (tests).
 api_status() {
   local cache="$CACHE/api-devices.json" devices tok self
-  self=$(hostname | tr '[:upper:]' '[:lower:]')
+  self=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
   if [[ -n ${JACK_API_FILE:-} ]]; then
     devices=$(cat "$JACK_API_FILE")
   elif [[ -r $cache ]] && (( $(date +%s) - $(stat -c %Y "$cache") < 30 )); then
@@ -183,7 +183,7 @@ json() {
       [(.BackendState // "NoState"), (.Self // {} | nodename), ((.Self.TailscaleIPs // [])[0] // "")] | @tsv' 2>/dev/null)
     state=${state:-Stopped}
   fi
-  [[ -n $self_name ]] || self_name=$(hostname | tr '[:upper:]' '[:lower:]')
+  [[ -n $self_name ]] || self_name=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
 
   printf '{"self":{"name":"%s","ip":"%s","state":"%s","vm":%s},"peers":[' \
     "${self_name//[^a-z0-9-]/}" "${self_ip//[^0-9a-f.:]/}" "${state//[^A-Za-z]/}" "$vm"

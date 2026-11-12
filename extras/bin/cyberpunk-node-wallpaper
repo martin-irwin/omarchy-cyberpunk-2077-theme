@@ -32,22 +32,41 @@ fi
 [[ $res =~ ^([0-9]+)x([0-9]+)$ ]] || { echo "bad resolution: $res" >&2; exit 1; }
 w=${BASH_REMATCH[1]} h=${BASH_REMATCH[2]}
 
-host=$(hostname | tr '[:upper:]' '[:lower:]')
-out="$DEST/00-node-$host.png"
+# Not every install has `hostname` (inetutils); fall back to the kernel's name.
+host=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
 tsnet=$(tailscale ip -4 2>/dev/null | head -1 || true)
-args=("$out" "$THEME_DIR/fonts" "$w" "$h")
-[[ $tsnet =~ ^[0-9.]+$ ]] && args+=(--tsnet "$tsnet")
 
 if python3 -c 'import PIL' 2>/dev/null; then
-  python3 -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "${args[@]}" >/dev/null
+  draw() { python3 -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "$@"; }
 elif command -v uv >/dev/null; then
-  uv run -q --with pillow python -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "${args[@]}" >/dev/null
+  draw() { uv run -q --with pillow python -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "$@"; }
 else
   echo "Needs Pillow: omarchy pkg add python-pillow   (then run this again)" >&2
   exit 1
 fi
-echo "node wallpaper: $out (${w}x${h})"
 
+# One card per theme, each in its own colours: the original, plus every
+# variant cyberpunk-variants has built (each has its own backgrounds folder).
+themes=(cyberpunk-2077)
+for v in netrunner samurai; do
+  [[ -d $HOME/.config/omarchy/themes/cyberpunk-2077-$v ]] && themes+=("cyberpunk-2077-$v")
+done
+for theme in "${themes[@]}"; do
+  palette=${theme#cyberpunk-2077}; palette=${palette#-}; palette=${palette:-default}
+  dir="$HOME/.config/omarchy/backgrounds/$theme"
+  [[ -L $dir ]] && dir=$DEST              # old layout: variant folder is a link
+  [[ $dir == "$DEST" && $theme != cyberpunk-2077 ]] && continue
+  mkdir -p "$dir"
+  out="$dir/00-node-$host.png"
+  args=("$out" "$THEME_DIR/fonts" "$w" "$h" --palette "$palette")
+  [[ $tsnet =~ ^[0-9.]+$ ]] && args+=(--tsnet "$tsnet")
+  draw "${args[@]}" >/dev/null
+  echo "node wallpaper: $out (${w}x${h}, $palette)"
+done
+
+# Set the card that matches the theme in use.
 if (( set_bg )) && command -v omarchy >/dev/null; then
-  omarchy theme bg set "$out" >/dev/null 2>&1 || true
+  current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true)
+  [[ $current == cyberpunk-2077* && -f $HOME/.config/omarchy/backgrounds/$current/00-node-$host.png ]] || current=cyberpunk-2077
+  omarchy theme bg set "$HOME/.config/omarchy/backgrounds/$current/00-node-$host.png" >/dev/null 2>&1 || true
 fi
