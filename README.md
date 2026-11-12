@@ -71,12 +71,13 @@ picker (*Super+Ctrl+Shift+Space*) as their own themes:
 | Theme | Text | Highlight | Look |
 |---|---|---|---|
 | Cyberpunk 2077 | coral `#FF6159` | cyan | the in-game computers (default) |
-| Cyberpunk 2077 Netrunner | cyan `#5EF6FF` | coral | scanner / netrunner interface |
+| Cyberpunk 2077 Netrunner | cyan `#5EF6FF` | white | the in-game PC interface: e-mail, messages, local network |
 | Cyberpunk 2077 Samurai | yellow `#F3E600` | cyan | the Samurai box-art look |
 
 Variants change only the UI roles (text, highlights, frames, panels). The 16
 terminal colours stay the same, so `ls`, git and editors still read correctly.
-They share the downloaded wallpapers. The variants are generated copies:
+They share the downloaded wallpapers, and each gets its own node wallpaper
+in its colours (below). The variants are generated copies:
 after a `git pull`, run `cyberpunk-variants` to refresh them. The Cyberdeck
 and Telegram theme stay coral.
 
@@ -268,9 +269,11 @@ lookup. Uptime SSH goes only to watched hosts on your own tailnet.
 
 `cyberpunk-node-wallpaper` draws this machine's own wallpaper: its host name
 as the glitch title and a NODE readout of its OS, kernel, CPU, cores, memory,
-display and tailnet IP, at the size of your largest monitor. It's saved as
-`00-node-<host>.png`, first in the background switcher for every variant,
-and `install.sh` sets it as the background. It needs Pillow
+display and tailnet IP, at the size of your largest monitor. It draws one
+per theme, each in that theme's colours (coral, cyan Netrunner, yellow
+Samurai), saved as `00-node-<host>.png` first in that theme's background
+switcher, and sets the one matching the theme in use. Re-run it after
+joining the tailnet to add the TSNET row. It needs Pillow
 (`omarchy pkg add python-pillow`, which `install.sh` offers), or `uv`.
 
 ## Cyberdeck: the Night City file browser
