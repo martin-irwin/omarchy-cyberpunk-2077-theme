@@ -194,8 +194,9 @@ if (( netbar )); then
     fi
   fi
   if out=$("$THEME_DIR/extras/bin/cyberpunk-node-wallpaper" --no-set 2>&1); then
-    node_wallpaper=${out#node wallpaper: }; node_wallpaper=${node_wallpaper%% (*}
-    echo "   $out"
+    # one card per theme; it's set below for whichever theme is in use
+    node_wallpaper=1
+    echo "$out" | sed 's/^/   /'
   else
     echo "   (node wallpaper skipped: $out)"
   fi
@@ -227,10 +228,15 @@ if (( screensaver )); then
 fi
 
 # 7. Apply (keeps a variant if one is already in use)
-current_theme=$(basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
-[[ $current_theme == cyberpunk-2077-* ]] || current_theme=cyberpunk-2077
+# Keep the variant in use. Omarchy records the name in theme.name; older
+# installs had current/theme as a link to the theme's folder.
+current_theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null ||
+  basename "$(readlink -f "$HOME/.local/state/omarchy/current/theme" 2>/dev/null)" 2>/dev/null || true)
+[[ $current_theme == cyberpunk-2077 || $current_theme == cyberpunk-2077-* ]] || current_theme=cyberpunk-2077
 say "Applying theme"
 omarchy theme set "$current_theme"
-[[ -n $node_wallpaper && -f $node_wallpaper ]] && omarchy theme bg set "$node_wallpaper" >/dev/null 2>&1 || true
+host=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
+card="$HOME/.config/omarchy/backgrounds/$current_theme/00-node-$host.png"
+[[ -n $node_wallpaper && -f $card ]] && omarchy theme bg set "$card" >/dev/null 2>&1 || true
 
 say "Wake up, samurai. We have a city to burn."
