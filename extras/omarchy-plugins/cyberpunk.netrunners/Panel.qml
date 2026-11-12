@@ -412,7 +412,10 @@ Panel {
         Item {
           visible: root.connected
           width: parent.width
+          // Two lines when JACK OUT shows: the hint spans the panel's width,
+          // so sharing one line made the two overlap.
           height: footerHint.implicitHeight + Style.space(4)
+                  + (jackOut.visible ? jackOut.implicitHeight + Style.space(6) : 0)
 
           // JACK OUT: take this machine off the tailnet (tailscale down).
           // Not shown via host: there's no local connection to drop.
@@ -420,7 +423,8 @@ Panel {
             id: jackOut
             visible: root.onLocalTailnet
             anchors.left: parent.left
-            anchors.bottom: parent.bottom
+            anchors.top: parent.top
+            anchors.topMargin: Style.space(4)
             textFormat: Text.PlainText
             text: root.switching ? "JACKING OUT…" : "◥ JACK OUT"
             color: jackOutMouse.containsMouse ? Commons.Color.urgent : Qt.darker(panel.fg, 1.5)

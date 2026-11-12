@@ -195,7 +195,7 @@ own items, the way kuroshi's i3 bar reads:
 
 | Widget | Shows | Click |
 |---|---|---|
-| `cyberpunk.node` | This machine's host name as a HUD badge in the accent colour | opens NETRUNNERS |
+| `cyberpunk.node` | This machine's host name as a HUD badge in the accent colour | click: "optics reboot", the name glitches and decodes while the theme flips coral ↔ Netrunner; right-click: NETRUNNERS |
 | `cyberpunk.netrunners` | Your tailnet IP | opens NETRUNNERS |
 | `cyberpunk.wan` | Internet latency from one ping every 30 s (`WAN DOWN` when there's no answer) | checks now |
 
