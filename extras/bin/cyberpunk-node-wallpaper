@@ -1,0 +1,72 @@
+#!/bin/bash
+# Make this machine's Night City node wallpaper: its host name as the glitch
+# title and a NODE readout (OS, kernel, CPU, cores, memory, display, TSNET).
+# Sized for the largest monitor; saved first in the theme's backgrounds, so
+# it shows up in the background switcher for every Cyberpunk variant.
+#
+#   cyberpunk-node-wallpaper          make it and set it as the background
+#   cyberpunk-node-wallpaper --no-set make it only
+#   cyberpunk-node-wallpaper --res 3840x2160
+#
+# Needs Pillow: python-pillow (omarchy pkg add python-pillow), or uv.
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+DEST="$HOME/.config/omarchy/backgrounds/cyberpunk-2077"
+set_bg=1 res=""
+while (( $# )); do
+  case $1 in
+    --no-set) set_bg=0 ;;
+    --res) res=$2; shift ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+if [[ -z $res ]]; then
+  res=$(hyprctl monitors -j 2>/dev/null | jq -r 'max_by(.width * .height) | "\(.width)x\(.height)"' 2>/dev/null || true)
+  [[ $res =~ ^[0-9]+x[0-9]+$ ]] || res=1920x1080
+fi
+[[ $res =~ ^([0-9]+)x([0-9]+)$ ]] || { echo "bad resolution: $res" >&2; exit 1; }
+w=${BASH_REMATCH[1]} h=${BASH_REMATCH[2]}
+
+# Not every install has `hostname` (inetutils); fall back to the kernel's name.
+host=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
+tsnet=$(tailscale ip -4 2>/dev/null | head -1 || true)
+
+if python3 -c 'import PIL' 2>/dev/null; then
+  draw() { python3 -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "$@"; }
+elif command -v uv >/dev/null; then
+  draw() { uv run -q --with pillow python -I "$THEME_DIR/extras/wallpaper/node-wallpaper.py" "$@"; }
+else
+  echo "Needs Pillow: omarchy pkg add python-pillow   (then run this again)" >&2
+  exit 1
+fi
+
+# One card per theme, each in its own colours: the original, plus every
+# variant cyberpunk-variants has built (each has its own backgrounds folder).
+themes=(cyberpunk-2077)
+for v in netrunner samurai; do
+  [[ -d $HOME/.config/omarchy/themes/cyberpunk-2077-$v ]] && themes+=("cyberpunk-2077-$v")
+done
+for theme in "${themes[@]}"; do
+  palette=${theme#cyberpunk-2077}; palette=${palette#-}; palette=${palette:-default}
+  dir="$HOME/.config/omarchy/backgrounds/$theme"
+  [[ -L $dir ]] && dir=$DEST              # old layout: variant folder is a link
+  [[ $dir == "$DEST" && $theme != cyberpunk-2077 ]] && continue
+  mkdir -p "$dir"
+  out="$dir/00-node-$host.png"
+  args=("$out" "$THEME_DIR/fonts" "$w" "$h" --palette "$palette")
+  [[ $tsnet =~ ^[0-9.]+$ ]] && args+=(--tsnet "$tsnet")
+  draw "${args[@]}" >/dev/null
+  echo "node wallpaper: $out (${w}x${h}, $palette)"
+done
+
+# Set the card that matches the theme in use.
+if (( set_bg )) && command -v omarchy >/dev/null; then
+  current=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null || true)
+  [[ $current == cyberpunk-2077* && -f $HOME/.config/omarchy/backgrounds/$current/00-node-$host.png ]] || current=cyberpunk-2077
+  omarchy theme bg set "$HOME/.config/omarchy/backgrounds/$current/00-node-$host.png" >/dev/null 2>&1 || true
+fi

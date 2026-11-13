@@ -1,0 +1,323 @@
+#!/bin/bash
+# jack — jack in to another machine on your tailnet (Cyberpunk 2077 theme).
+#
+#   jack                 pick a host with fzf, then SSH in
+#   jack <host>          connect straight away (name or prefix: "jack om")
+#   jack --list          host table
+#   jack --json [W ...]  host status for the NETRUNNERS bar panel; W are
+#                        watched hosts, whose uptime is fetched over SSH
+#   jack --term <host>   open a new terminal window jacked in to <host>
+#   jack --connect       bring this machine onto the tailnet (or log in)
+#   jack --disconnect    take it off again
+#   jack --api-check     test the via-host credentials (see below)
+#
+# Hosts come live from `tailscale status --json`; phones are left out. The
+# login user is yours unless ~/.config/jack/users says otherwise
+# ("host user" per line). Uptime uses SSH with keys only (never prompts),
+# cached for 5 minutes in ~/.cache/jack/.
+#
+# Via host: a machine that reaches the tailnet through its host (a VM behind
+# a Mac running Tailscale, say) has no tailnet of its own to ask. If local
+# Tailscale isn't running and ~/.config/jack/tailscale-oauth exists, the host
+# list comes from the Tailscale API instead (read-only OAuth client, scope
+# devices:core:read):
+#     client_id=...
+#     client_secret=tskey-client-...
+# One HTTPS request to api.tailscale.com per refresh, cached for 30 s.
+
+set -o pipefail
+USERS_FILE="$HOME/.config/jack/users"
+API_CRED="$HOME/.config/jack/tailscale-oauth"
+API_BASE="https://api.tailscale.com/api/v2"
+CACHE="$HOME/.cache/jack"
+DEFAULT_USER=${JACK_USER:-$USER}
+
+have_api() { [[ -r $API_CRED || -n ${JACK_API_FILE:-} ]]; }
+
+# OAuth client credentials → access token, cached until shortly before it
+# expires. The secret goes to curl through a file descriptor, never argv.
+api_token() {
+  local tok_file="$CACHE/api-token" now exp tok id secret resp
+  now=$(date +%s)
+  if [[ -r $tok_file ]]; then
+    read -r exp tok <"$tok_file"
+    [[ $exp =~ ^[0-9]+$ ]] && (( exp > now + 60 )) && [[ -n $tok ]] && { echo "$tok"; return 0; }
+  fi
+  id=$(sed -n 's/^client_id=//p' "$API_CRED" | head -1 | tr -d '[:space:]')
+  secret=$(sed -n 's/^client_secret=//p' "$API_CRED" | head -1 | tr -d '[:space:]')
+  [[ -n $id && -n $secret ]] || return 1
+  resp=$(curl -fsS --max-time 10 --max-filesize 65536 \
+    -K <(printf 'user = "%s:%s"\n' "$id" "$secret") \
+    -d grant_type=client_credentials "$API_BASE/oauth/token") || return 1
+  tok=$(jq -r '.access_token // empty' <<<"$resp")
+  exp=$(( now + $(jq -r '(.expires_in // 3600) | floor' <<<"$resp") ))
+  [[ $tok =~ ^[A-Za-z0-9._~+/=-]+$ ]] || return 1
+  mkdir -p "$CACHE"
+  (umask 077; printf '%s %s\n' "$exp" "$tok" >"$tok_file")
+  echo "$tok"
+}
+
+# The API's device list, reshaped like `tailscale status --json` so the rest
+# of jack (and the panel) can't tell the difference. JACK_API_FILE reads a
+# saved API response instead (tests).
+api_status() {
+  local cache="$CACHE/api-devices.json" devices tok self
+  self=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
+  if [[ -n ${JACK_API_FILE:-} ]]; then
+    devices=$(cat "$JACK_API_FILE")
+  elif [[ -r $cache ]] && (( $(date +%s) - $(stat -c %Y "$cache") < 30 )); then
+    devices=$(cat "$cache")
+  else
+    tok=$(api_token) || return 1
+    devices=$(curl -fsS --max-time 10 --max-filesize 4000000 \
+      -H @<(printf 'Authorization: Bearer %s\n' "$tok") \
+      "$API_BASE/tailnet/-/devices") || return 1
+    mkdir -p "$CACHE"
+    (umask 077; printf '%s' "$devices" >"$cache")
+  fi
+  jq --arg self "$self" '
+    def iso2epoch: (sub("\\.[0-9]+"; "") | try fromdateiso8601 catch 0);
+    { BackendState: "ViaHost",
+      Self: { HostName: $self, DNSName: "", TailscaleIPs: [] },
+      Peer: ([ (.devices // [])[]
+        | select((((.name // "") | split(".")[0]) | ascii_downcase) != $self)
+        | { DNSName: (.name // ""), HostName: (.hostname // ""),
+            TailscaleIPs: [ (.addresses // [])[] | select(test("^[0-9.]+$")) ],
+            OS: (.os // ""),
+            Online: (if .connectedToControl != null then .connectedToControl == true
+                     else (now - ((.lastSeen // "1970-01-01T00:00:00Z") | iso2epoch)) < 300 end),
+            LastSeen: (.lastSeen // "") } ]
+        | to_entries | map({ key: ("api:" + (.key | tostring)), value }) | from_entries) }' <<<"$devices"
+}
+
+# Is this machine a VM? VMs usually reach the tailnet through their host's
+# Tailscale, so they get via-host behaviour; real installs get the full local
+# Tailscale experience. JACK_MACHINE=vm|metal overrides the detection.
+is_vm() {
+  case ${JACK_MACHINE:-auto} in
+    vm) return 0 ;;
+    metal) return 1 ;;
+    *) systemd-detect-virt -q 2>/dev/null ;;
+  esac
+}
+
+# Where host data comes from:
+#   a saved file (tests)
+#   local Tailscale, when this machine is on the tailnet itself
+#   on a VM that isn't: the Tailscale API if credentials are set up
+#     (ViaHost), else nothing to list (ViaHostNoApi: it just uses the tunnel)
+#   on a real install that isn't: local Tailscale's state (LOGIN / OFF)
+ts_status() {
+  if [[ -n ${JACK_STATUS_FILE:-} ]]; then cat "$JACK_STATUS_FILE"; return; fi
+  local local_json="" state=""
+  command -v tailscale >/dev/null && local_json=$(tailscale status --json 2>/dev/null)
+  state=$(jq -r '.BackendState // ""' <<<"$local_json" 2>/dev/null)
+  if [[ $state != Running ]] && is_vm; then
+    if have_api; then
+      api_status || echo '{"BackendState":"ViaHostError"}'
+    else
+      echo '{"BackendState":"ViaHostNoApi"}'
+    fi
+    return
+  fi
+  printf '%s' "$local_json"
+}
+
+# name<TAB>ip<TAB>os<TAB>online<TAB>lastSeen, online first
+# jq: a node's short name from its DNS name, else its host name ("" when neither)
+JQ_NAME='def nodename: ((.DNSName // "") | split(".")[0] // "") as $d
+  | (if $d != "" then $d else (.HostName // "") end) | ascii_downcase | gsub("[^a-z0-9-]"; "");'
+
+hosts() {
+  ts_status | jq -r "$JQ_NAME"'
+    [.Peer // {} | .[] | select(.OS != "android" and .OS != "iOS")
+      | { name: nodename,
+          ip: ((.TailscaleIPs[0] // "") | gsub("[^0-9a-f.:]"; "")),
+          os: ((.OS // "") | gsub("[^A-Za-z0-9]"; "")),
+          online: (.Online == true),
+          seen: ((.LastSeen // "") | gsub("[^0-9TZ:.+-]"; "")) }
+      | select(.name != "" and .ip != "") ]
+    | sort_by((if .online then 0 else 1 end), .name)[]
+    | [.name, .ip, .os, (.online | tostring), .seen] | @tsv' 2>/dev/null
+}
+
+user_for() {
+  local u=""
+  [[ -r $USERS_FILE ]] && u=$(awk -v h="$1" '!/^#/ && $1 == h { print $2; exit }' "$USERS_FILE")
+  echo "${u:-$DEFAULT_USER}"
+}
+
+# "12 days, 11:43" / "3:22" / "45 mins" (Linux or macOS uptime) → "12d 11h"
+short_uptime() {
+  local s=${1#*up } d=0 h=0 m=0
+  s=${s%%user*}; s=${s%,*}
+  [[ $s =~ ([0-9]+)\ day ]] && d=${BASH_REMATCH[1]}
+  [[ $s =~ ([0-9]+):([0-9]+) ]] && { h=$((10#${BASH_REMATCH[1]})); m=$((10#${BASH_REMATCH[2]})); }
+  [[ $s =~ ([0-9]+)\ min ]] && m=${BASH_REMATCH[1]}
+  [[ $s =~ ([0-9]+)\ hr ]] && h=${BASH_REMATCH[1]}
+  if (( d )); then echo "${d}d ${h}h"; elif (( h )); then echo "${h}h ${m}m"; else echo "${m}m"; fi
+}
+
+refresh_uptime() {
+  local h=$1 ip out
+  mkdir -p "$CACHE"
+  ip=$(hosts | awk -F'\t' -v n="$h" '$1 == n { print $2; exit }')
+  [[ -n $ip ]] || return
+  if out=$(timeout 12 ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$(user_for "$h")@$ip" uptime 2>/dev/null); then
+    short_uptime "$out" >"$CACHE/$h"
+  else
+    echo "-" >"$CACHE/$h"     # key refused: remember for an hour
+  fi
+}
+
+json() {
+  local watch=" $* " now self_ip self_name state first=1 name ip os online seen f age up
+  now=$(date +%s)
+  local vm=false
+  is_vm && vm=true
+  if [[ -z ${JACK_STATUS_FILE:-} ]] && ! command -v tailscale >/dev/null && [[ $vm == false ]]; then
+    state=Missing
+  else
+    # fields tab-separated so an empty name or IP can't shift the others
+    IFS=$'\t' read -r state self_name self_ip < <(ts_status | jq -r "$JQ_NAME"'
+      [(.BackendState // "NoState"), (.Self // {} | nodename), ((.Self.TailscaleIPs // [])[0] // "")] | @tsv' 2>/dev/null)
+    state=${state:-Stopped}
+  fi
+  [[ -n $self_name ]] || self_name=$( (hostname 2>/dev/null || cat /proc/sys/kernel/hostname) | tr '[:upper:]' '[:lower:]')
+
+  printf '{"self":{"name":"%s","ip":"%s","state":"%s","vm":%s},"peers":[' \
+    "${self_name//[^a-z0-9-]/}" "${self_ip//[^0-9a-f.:]/}" "${state//[^A-Za-z]/}" "$vm"
+  while IFS=$'\t' read -r name ip os online seen; do
+    up=""
+    if [[ $online == true && $watch == *" $name "* ]]; then
+      f="$CACHE/$name"
+      age=$(( now - $(stat -c %Y "$f" 2>/dev/null || echo 0) ))
+      up=$(cat "$f" 2>/dev/null)
+      if { (( age > 300 )) && [[ $up != "-" ]]; } || (( age > 3600 )); then
+        (setsid "$0" --refresh-uptime "$name" >/dev/null 2>&1 </dev/null &)
+      fi
+      [[ $up == "-" ]] && up=""
+    fi
+    (( first )) || printf ','
+    first=0
+    # names are DNS labels and IPs/OS/timestamps are plain tokens: no escaping needed,
+    # but strip anything else just in case
+    printf '{"name":"%s","ip":"%s","os":"%s","online":%s,"seen":"%s","uptime":"%s","watched":%s}' \
+      "${name//[^a-z0-9-]/}" "${ip//[^0-9a-f.:]/}" "${os//[^A-Za-z0-9]/}" \
+      "$([[ $online == true ]] && echo true || echo false)" "${seen//[^0-9TZ:.+-]/}" \
+      "${up//[^0-9a-z ]/}" "$([[ $watch == *" $name "* ]] && echo true || echo false)"
+  done < <(hosts)
+  printf ']}\n'
+}
+
+notify() { notify-send -a NETRUNNERS "$1" "${2:-}" 2>/dev/null || echo "$1 ${2:-}"; }
+
+# Bring this machine onto the tailnet: start it if it's stopped, or open the
+# login page if it's logged out. If tailscale refuses because this user may
+# not control it, ask once (pkexec) to make the user its operator, as
+# Omarchy's own Tailscale panel does, then try again.
+tailnet_up() {
+  local state log pid url tried_operator=0
+  state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "NoState"')
+  [[ $state == Running ]] && { notify "Already jacked in to the tailnet"; return 0; }
+  log=$(mktemp)
+  trap 'rm -f "$log"' RETURN
+  while :; do
+    : >"$log"
+    # `tailscale up` waits until a login completes, so it runs in the
+    # background while we watch its output for the login link.
+    setsid tailscale up >"$log" 2>&1 </dev/null &
+    pid=$!
+    for _ in $(seq 1 40); do
+      sleep 0.5
+      url=$(grep -oE 'https://login\.tailscale\.com/[A-Za-z0-9/_-]+' "$log" | head -1)
+      if [[ -n $url ]]; then
+        xdg-open "$url" >/dev/null 2>&1 &
+        notify "Log in to your tailnet" "Finish in the browser; this deck joins when you're done"
+        return 0
+      fi
+      kill -0 "$pid" 2>/dev/null || break
+    done
+    if grep -qiE 'access denied|denied|sudo|operator' "$log" && (( ! tried_operator )); then
+      tried_operator=1
+      kill "$pid" 2>/dev/null
+      notify "One-time permission" "Allowing $USER to switch Tailscale on and off"
+      pkexec tailscale set --operator="$USER" || { notify "Tailscale permission refused"; return 1; }
+      continue
+    fi
+    break
+  done
+  state=$(tailscale status --json 2>/dev/null | jq -r '.BackendState // "NoState"')
+  if [[ $state == Running ]]; then
+    notify "Jacked in to the tailnet" "$(tailscale ip -4 2>/dev/null | head -1)"
+  else
+    notify "Couldn't connect to the tailnet" "$(tr '\n' ' ' <"$log" | cut -c1-160)"
+    return 1
+  fi
+}
+
+tailnet_down() {
+  if tailscale down 2>/dev/null; then
+    notify "Jacked out of the tailnet"
+  elif pkexec tailscale set --operator="$USER" && tailscale down; then
+    notify "Jacked out of the tailnet"
+  else
+    notify "Couldn't disconnect from the tailnet"; return 1
+  fi
+}
+
+connect() {
+  local name ip _rest user
+  if [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+    # a bare address: no host list needed (a VM using its host's tunnel)
+    name=$1 ip=$1
+  else
+    IFS=$'\t' read -r name ip _rest < <(hosts | awk -F'\t' -v n="$1" '$1 == n || index($1, n) == 1 { print; exit }')
+  fi
+  if [[ -z $ip ]]; then
+    printf '\e[31m✕ NO ROUTE TO %s\e[0m — not on the tailnet (jack --list)\n' "${1^^}" >&2
+    return 1
+  fi
+  user=$(user_for "$name")
+  printf '\e]2;JACK // %s\a' "${name^^}"
+  printf '\n\e[30;46m JACK IN \e[0;36m◤\e[0m \e[37m%s\e[0m \e[90m//\e[0m %s@%s\n\n' "${name^^}" "$user" "$ip"
+  ssh -o ConnectTimeout=8 "$user@$ip"
+  local rc=$?
+  printf '\n\e[37m◥\e[30;47m JACKED OUT \e[0m \e[90m%s · exit %s\e[0m\n' "${name^^}" "$rc"
+  return $rc
+}
+
+case ${1:-} in
+  --json) shift; json "$@" ;;
+  --refresh-uptime) refresh_uptime "$2" ;;
+  --api-check)
+    have_api || { echo "No credentials: create $API_CRED (client_id=…, client_secret=…)" >&2; exit 1; }
+    [[ -r $API_CRED ]] && [[ $(stat -c %a "$API_CRED") != 600 ]] && echo "note: chmod 600 $API_CRED" >&2
+    rm -f "$CACHE/api-devices.json"
+    if out=$(api_status); then
+      echo "API OK: $(jq '.Peer | length' <<<"$out") devices, $(jq '[.Peer[] | select(.Online)] | length' <<<"$out") online"
+    else
+      echo "API request failed: check the client ID/secret and that the client has devices:core:read" >&2; exit 1
+    fi ;;
+  --connect) tailnet_up ;;
+  --disconnect) tailnet_down ;;
+  --list|-l)
+    hosts | while IFS=$'\t' read -r name ip os online _; do
+      printf '%-18s %-16s %-8s %s\n' "$name" "$ip" "$os" "$([[ $online == true ]] && echo ONLINE || echo OFFLINE)"
+    done ;;
+  --term)
+    [[ -n ${2:-} ]] || { echo "usage: jack --term <host>" >&2; exit 1; }
+    exec setsid xdg-terminal-exec --app-id=cyberpunk.jack --title="JACK // ${2^^}" -- "$0" "$2" --hold >/dev/null 2>&1 </dev/null ;;
+  "")
+    pick=$("$0" --list | fzf --height=~60% --layout=reverse --border=sharp --no-info \
+      --prompt='JACK IN// ' --header='TAILNET · enter to connect · esc to abort' \
+      --color='fg:7,bg:-1,hl:6,fg+:6,bg+:0,hl+:14,prompt:6,pointer:6,marker:3,header:8,border:8,gutter:-1') || exit 0
+    connect "${pick%% *}" ;;
+  -*) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)
+    connect "$1"; rc=$?
+    if [[ ${2:-} == --hold ]] && (( rc != 0 )); then
+      printf '\e[90mpress enter to close\e[0m'; read -r
+    fi
+    exit $rc ;;
+esac

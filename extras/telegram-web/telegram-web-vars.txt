@@ -1,0 +1,136 @@
+--border-radius-button	1.75rem
+--border-radius-button-tiny	1.125rem
+--border-radius-default	1rem
+--border-radius-default-small	.625rem
+--border-radius-default-tiny	.375rem
+--border-radius-forum-avatar	57.167%
+--border-radius-island	2.573rem
+--border-radius-list-item	1.715rem
+--border-radius-menu	1.715rem
+--border-radius-messages	.9375rem
+--border-radius-messages-small	.375rem
+--border-radius-modal	3.43rem
+--border-radius-pane	1.5rem
+--border-radius-toast	1rem
+--color-accent-own	#4fae4e
+--color-accent-own-rgb	79, 174, 78
+--color-active	#00c73e
+--color-active-darker	#00a734
+--color-archive	#9eaab5
+--color-avatar-story-friend-unread-from	#c9eb38
+--color-avatar-story-friend-unread-to	#09c167
+--color-avatar-story-unread-from	#34c578
+--color-avatar-story-unread-to	#3ca3f3
+--color-background	#fff
+--color-background-compact-menu	#fffb
+--color-background-compact-menu-hover	#000000b2
+--color-background-compact-menu-reactions	#ffffffeb
+--color-background-menu-separator	#0000001a
+--color-background-own	#eeffde
+--color-background-own-apple	#dcf8c5
+--color-background-own-selected	#d4ffab
+--color-background-secondary	#f4f4f5
+--color-background-secondary-accent	#e4e4e5
+--color-background-selected	#f4f4f5
+--color-background-sidebar	#e4e4e5
+--color-borders	#dadce0
+--color-borders-alternate	#0000001a
+--color-borders-input	#dadce0
+--color-borders-read-story	#c4c9cc
+--color-chat-active	#3390ec
+--color-chat-hover	#f4f4f5
+--color-chat-username	#3c7eb0
+--color-code	#4a729a
+--color-code-bg	#70757914
+--color-code-own	#3c7940
+--color-code-own-bg	#70757914
+--color-composer-button	#000
+--color-default-shadow	#72727240
+--color-deleted-account	#9eaab5
+--color-dividers	#c8c6cc
+--color-dividers-android	#e7e7e7
+--color-error	#e53935
+--color-error-rgb	229, 57, 53
+--color-error-shade	#d33431
+--color-forum-hover-unread-topic	#e9e9e9
+--color-forum-hover-unread-topic-hover	#dcdcdc
+--color-gift-epic	#955cdb
+--color-gift-epic-bg	#955cdb26
+--color-gift-legendary	#bf7600
+--color-gift-legendary-bg	#bf760026
+--color-gift-rare	#11aabe
+--color-gift-rare-bg	#11aabe26
+--color-gift-uncommon	#40a920
+--color-gift-uncommon-bg	#40a92026
+--color-gray	#c4c9cc
+--color-green	#00c73e
+--color-green-darker	#00a734
+--color-green-rgb	0, 199, 62
+--color-heart	#ff3c32
+--color-icon-secondary	#707579
+--color-interactive-active	var(--color-primary)
+--color-interactive-buffered	rgba(var(--color-text-secondary-rgb), .25)
+--color-interactive-element-hover	rgba(var(--color-text-secondary-rgb), .08)
+--color-interactive-inactive	rgba(var(--color-text-secondary-rgb), .25)
+--color-item-active	#ededed
+--color-item-hover	#f4f4f5
+--color-light-coral	#d08a3133
+--color-light-shadow	#7272722b
+--color-links	#3390ec
+--color-list-icon	#fff
+--color-marked	#fdd76480
+--color-message-meta-own	#4fae4e
+--color-message-non-contact	#cceebf
+--color-message-reaction	#ebf3fd
+--color-message-reaction-chosen-hover	#1a82ea
+--color-message-reaction-chosen-hover-own	#3f9d4b
+--color-message-reaction-hover	#c5def9
+--color-message-reaction-hover-own	#b5e0a4
+--color-message-reaction-own	#cef0ba
+--color-message-story-mention-from	#4ef390
+--color-message-story-mention-to	#74bcff
+--color-negative-progress	#ce4c47
+--color-orange	#d08a31
+--color-own-links	#fff
+--color-placeholders	#a2acb4
+--color-primary	#3390ec
+--color-primary-opacity	rgba(var(--color-primary), .2)
+--color-primary-opacity-hover	rgba(var(--color-primary), .25)
+--color-primary-shade	#2f84d9
+--color-primary-shade-darker	#2b79c6
+--color-primary-shade-rgb	46.92, 132.48, 217.12
+--color-primary-tint	rgba(var(--color-primary), .1)
+--color-reply-active	#e8e9ea
+--color-reply-hover	#f4f4f4
+--color-reply-own-active	#c8ecbb
+--color-reply-own-active-apple	#bae6a8
+--color-reply-own-hover	#dbf5cd
+--color-reply-own-hover-apple	#cbefb7
+--color-scrollbar	#5a5a5a4d
+--color-scrollbar-code	#c8c8c84d
+--color-selection-highlight	#3993fb
+--color-selection-highlight-emoji	#3993fbb3
+--color-skeleton-background	#21212126
+--color-skeleton-foreground	#e8e8e833
+--color-stars	#fa0
+--color-success	#00c73e
+--color-telegram-blue	#3390ec
+--color-text	#000
+--color-text-green	#4fae4e
+--color-text-green-rgb	79, 174, 78
+--color-text-lighter	#2e3939
+--color-text-meta	#686c72
+--color-text-meta-apple	#8c8c91
+--color-text-meta-colored	#4fae4e
+--color-text-meta-rgb	104, 108, 114
+--color-text-rgb	0, 0, 0
+--color-text-secondary	#707579
+--color-text-secondary-apple	#8a8a90
+--color-text-secondary-rgb	112, 117, 121
+--color-toast-background	#202020cc
+--color-voice-transcribe-button	#e8f3ff
+--color-voice-transcribe-button-own	#cceebf
+--color-warning	#fb8c00
+--color-webpage-initial-background	#2e3939
+--color-white	#fff
+--color-yellow	#fdd764

@@ -1,0 +1,52 @@
+{
+  "BackendState": "Running",
+  "Self": {
+    "HostName": "deck",
+    "DNSName": "deck.example-tailnet.ts.net.",
+    "TailscaleIPs": ["100.64.0.10"],
+    "OS": "linux",
+    "Online": true
+  },
+  "Peer": {
+    "nodekey:a": {
+      "HostName": "afterlife",
+      "DNSName": "afterlife.example-tailnet.ts.net.",
+      "TailscaleIPs": ["100.64.0.11"],
+      "OS": "linux",
+      "Online": true,
+      "LastSeen": "0001-01-01T00:00:00Z"
+    },
+    "nodekey:b": {
+      "HostName": "Lizzies-Bar",
+      "DNSName": "lizzies-bar.example-tailnet.ts.net.",
+      "TailscaleIPs": ["100.64.0.12"],
+      "OS": "macOS",
+      "Online": true,
+      "LastSeen": "0001-01-01T00:00:00Z"
+    },
+    "nodekey:c": {
+      "HostName": "arasaka-tower",
+      "DNSName": "arasaka-tower.example-tailnet.ts.net.",
+      "TailscaleIPs": ["100.64.0.13"],
+      "OS": "linux",
+      "Online": false,
+      "LastSeen": "2026-11-08T19:28:10Z"
+    },
+    "nodekey:d": {
+      "HostName": "Judys Phone",
+      "DNSName": "judys-phone.example-tailnet.ts.net.",
+      "TailscaleIPs": ["100.64.0.14"],
+      "OS": "android",
+      "Online": true,
+      "LastSeen": "0001-01-01T00:00:00Z"
+    },
+    "nodekey:e": {
+      "HostName": "<img src=x>",
+      "DNSName": "evil-<b>name</b>.example-tailnet.ts.net.",
+      "TailscaleIPs": ["100.64.0.15"],
+      "OS": "linux\"},{\"x",
+      "Online": false,
+      "LastSeen": "2026-10-01T00:00:00Z\"}"
+    }
+  }
+}

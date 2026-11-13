@@ -132,13 +132,17 @@ PINNED = {
 }
 
 
-# Telegram's eight peer colours (names in groups, placeholder portraits)
+# Telegram's eight peer colours. Names in groups keep the full set so people
+# stay easy to tell apart; placeholder portraits (and Saved Messages, which
+# follows peer 4) are HUD badges instead: coral and cyan shades with dark
+# initials, so they sit back like the rest of the screen.
 PEERS = ["#ff003c", "#ff8a3d", "#c34dff", "#1ef2a0", "#5ef6ff", "#3fa9ff", "#ff6159", "#f3e600"]
-for i, colour in enumerate(PEERS, 1):
-    PINNED[f"historyPeer{i}NameFg"] = colour
-    PINNED[f"historyPeer{i}NameFgSelected"] = colour
-    PINNED[f"historyPeer{i}UserpicBg"] = colour
-    PINNED[f"historyPeer{i}UserpicBg2"] = colour
+USERPICS = ["#ff6159", "#5ef6ff", "#ff8c82", "#a8fbff", "#a3463f", "#2c8c94", "#ff6159", "#5ef6ff"]
+for i, (name, pic) in enumerate(zip(PEERS, USERPICS), 1):
+    PINNED[f"historyPeer{i}NameFg"] = name
+    PINNED[f"historyPeer{i}NameFgSelected"] = name
+    PINNED[f"historyPeer{i}UserpicBg"] = pic
+    PINNED[f"historyPeer{i}UserpicBg2"] = pic
 PINNED["historyPeerUserpicFg"] = "#0d0b10"
 
 
