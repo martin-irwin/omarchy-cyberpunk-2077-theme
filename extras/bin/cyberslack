@@ -1,0 +1,70 @@
+#!/bin/bash
+# Cyberslack: Slack as an Omarchy web app with the Night City skin.
+#
+# Runs app.slack.com as a Chromium app window with its own profile, so the
+# Stylus extension and the Night City userstyle stay out of your main browser.
+# The skin is CSS only (extras/slack/night-city.user.css, installed in Stylus):
+# the Slack desktop app, if you have one, is never touched.
+#
+#   cyberslack             open Slack
+#   cyberslack --install   add "Slack" to the app launcher (omarchy-webapp-install)
+#   cyberslack --stylus    open the Chrome Web Store page for Stylus in the profile
+#   cyberslack --style     print the path of the userstyle source
+#   cyberslack --remove    remove the launcher entry, profile and login
+#
+#   CYBERSLACK_DEBUG=1 cyberslack   also open Chromium's DevTools port on
+#                                   127.0.0.1:9336 (for working on the skin)
+
+set -euo pipefail
+
+THEME_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+STYLE="$THEME_DIR/extras/slack/night-city.user.css"
+DATA="$HOME/.local/share/cyberslack"
+URL="https://app.slack.com/client"
+# Slack's 256px app icon (the site favicon omarchy finds on its own is 35px).
+ICON_URL="https://a.slack-edge.com/80588/img/icons/app-256.png"
+STYLUS_URL="https://chromewebstore.google.com/detail/stylus/clngdbkpkpeebahjckkjfobafhncgmne"
+
+browser=chromium
+command -v chromium >/dev/null || browser=$(command -v google-chrome-stable || command -v brave || true)
+
+case ${1:-} in
+  --install)
+    # The launcher goes through Omarchy's web app tooling (icon, window class,
+    # omarchy-webapp-remove all work), with this script as its custom Exec so
+    # Slack gets Chromium and its own profile rather than the default browser.
+    omarchy-webapp-install "Slack" "$URL" "$ICON_URL" "$HOME/.local/bin/cyberslack"
+    echo "Slack added to the app launcher"
+    exit 0
+    ;;
+  --remove)
+    omarchy-webapp-remove "Slack" 2>/dev/null || rm -f "$HOME/.local/share/applications/Slack.desktop"
+    rm -rf "$DATA"
+    echo "Cyberslack removed (sign the session out under Slack > Profile > Sessions if you like)"
+    exit 0
+    ;;
+  --style) echo "$STYLE"; exit 0 ;;
+  --stylus) open_url=$STYLUS_URL ;;
+  -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") open_url="" ;;
+  *) echo "Unknown option: $1" >&2; exit 1 ;;
+esac
+
+[[ -n $browser ]] || { echo "Cyberslack needs Chromium (omarchy pkg add chromium)." >&2; exit 1; }
+mkdir -p "$DATA/profile"
+
+debug=()
+[[ ${CYBERSLACK_DEBUG:-} == 1 ]] && debug=(--remote-debugging-address=127.0.0.1 --remote-debugging-port=9336)
+
+# A running instance gets the URL over the profile's singleton socket.
+if [[ -n $open_url ]]; then
+  exec setsid "$browser" --user-data-dir="$DATA/profile" "$open_url" >/dev/null 2>&1
+fi
+
+# The skin is written for Slack's dark mode; --force-dark-mode asks for it.
+exec setsid "$browser" "${debug[@]}" \
+  --user-data-dir="$DATA/profile" \
+  --app="$URL" \
+  --force-dark-mode \
+  --no-first-run --no-default-browser-check \
+  >/dev/null 2>&1

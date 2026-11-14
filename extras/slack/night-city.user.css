@@ -1,0 +1,386 @@
+/* ==UserStyle==
+@name           Night City — Slack
+@namespace      github.com/martin-irwin/omarchy-cyberpunk-2077-theme
+@version        1.0.0
+@description    Slack web (app.slack.com) in the Cyberpunk 2077 / Night City Omarchy palette. CSS only.
+@author         Martin Irwin
+@license        MIT
+@preprocessor   default
+==/UserStyle== */
+
+/*
+ * Night City for Slack
+ * ────────────────────
+ * Source of truth: extras/slack/night-city.user.css in the cyberpunk-2077
+ * Omarchy theme. Installed into Stylus in the Slack web app's own Chromium
+ * profile (see extras/bin/cyberslack). Pure CSS: nothing in Slack is patched,
+ * and disabling the style in Stylus puts Slack back exactly as it was.
+ *
+ * Palette = colors.toml of the theme (bar, terminal, Telegram, Cyberphone).
+ * Slack's own Preferences > Appearance custom theme is set to the same colours
+ * as a fallback for when this style is off or broken.
+ *
+ * ── Selectors most likely to break after a Slack update ──────────────────
+ *  Stable-ish (data-qa / ARIA; Slack's own tests depend on these):
+ *    [data-qa="channel-sidebar"]        channel list (inside .p-view_contents--sidebar)
+ *    [data-qa="message_pane"]           main message list
+ *    .p-view_contents--primary/--secondary/--sidebar  the three framed panes
+ *    [data-qa="threads_flexpane"]       thread side pane
+ *    [data-qa="message_input"]          composer
+ *    [data-qa="message_container"]      one message
+ *    [data-qa="message-text"]           message body
+ *    [role="treeitem"][aria-current]    sidebar rows; "true" = active channel
+ *    [data-qa="ia4_sidebar_header__title"] workspace name
+ *    [data-qa^="channel_sidebar__section_heading_label"] section headings
+ *  FRAGILE (Slack's BEM class names; they rename these every year or two):
+ *    .p-channel_sidebar__channel--unread / --selected
+ *    .p-channel_sidebar__name, .p-channel_sidebar__badge, .c-mention_badge
+ *    .p-ia4_home_header_menu__team_name / .p-ia4_home_header_menu__button
+ *    .p-view_header__channel_title, .c-timestamp, .c-member_slug,
+ *    .c-message__sender_button, .c-link, .p-flexpane, .c-wysiwyg_container
+ *  MOST FRAGILE: the --sk_* / --dt_color-* custom properties re-pointed in the
+ *    "Slack's own colour tokens" block. If Slack renames its token set, that
+ *    block silently stops working and the rules below it still apply.
+ * ───────────────────────────────────────────────────────────────────────
+ */
+
+@-moz-document domain("app.slack.com") {
+
+/* ═══ Tweak here ═══════════════════════════════════════════════════════ */
+:root {
+  --nc-bg:          #0D0B10;   /* colors.toml background            */
+  --nc-bg-deep:     #08070B;   /* dark_background                   */
+  --nc-panel:       #140F15;   /* between background and lighter_background */
+  --nc-panel-hi:    #1C1016;   /* lighter_background (hover)        */
+  --nc-yellow:      #F3E600;   /* gig yellow                        */
+  --nc-cyan:        #5EF6FF;   /* netrunner cyan                    */
+  --nc-red:         #FF003C;   /* alarm red                         */
+  --nc-coral:       #FF6159;   /* HUD coral                         */
+  --nc-text:        #F2EBE6;   /* bright_foreground: message body   */
+  --nc-dim:         #8A8FA3;   /* metadata, inactive channels       */
+  --nc-select-bg:   #10353A;   /* selection_background              */
+
+  --nc-border-a:    rgba(255, 0, 60, .75);   /* red border  */
+  --nc-border-b:    rgba(94, 246, 255, .6); /* cyan border */
+  --nc-cut:         12px;                    /* clipped corner size */
+
+  --nc-display: "Rajdhani", "Orbitron", "Barlow Condensed", sans-serif;
+  --nc-mono:    "Share Tech Mono", "JetBrainsMono Nerd Font", ui-monospace, monospace;
+  /* Body text: messages, composer, menus. Default is Slack's own stack, so
+     nothing changes until you edit it, e.g. "Inter", sans-serif or
+     var(--nc-display). Headings, names and metadata keep the two above. */
+  --nc-body:    "Slack-Lato", "Slack-Fractions", "appleLogo", sans-serif;
+
+  /* Scanlines: 0 turns them off; .04–.08 is "faint". */
+  --nc-scanlines: .05;
+}
+
+/* ═══ Slack's own colour tokens (most fragile, biggest win) ═════════════ */
+/* Slack paints most surfaces from rgb triplets like --sk_primary_background
+   and newer --dt_color-* tokens. Re-pointing them covers menus, modals and
+   popovers that the selectors below never reach. */
+:root, body, .p-client, .p-ia4_client, [class*="sk-client-theme"] {
+  --sk_primary_background: 13, 11, 16 !important;
+  --sk_primary_foreground: 242, 235, 230 !important;
+  --sk_inverted_background: 242, 235, 230 !important;
+  --sk_inverted_foreground: 13, 11, 16 !important;
+  --sk_foreground_min: 138, 143, 163 !important;
+  --sk_foreground_low: 138, 143, 163 !important;
+  --sk_foreground_high: 138, 143, 163 !important;
+  --sk_foreground_max: 242, 235, 230 !important;
+  --sk_highlight: 94, 246, 255 !important;
+  --sk_highlight_hover: 168, 251, 255 !important;
+  --sk_highlight_accent: 94, 246, 255 !important;
+  --sk_secondary_highlight: 255, 0, 60 !important;
+
+  /* --dt_color-surf-* are translucent overlays (hover, chips), not page
+     backgrounds: keep them translucent or content disappears under them. */
+  --dt_color-surf-pry: rgba(94, 246, 255, .05) !important;
+  --dt_color-surf-pry-hover: rgba(94, 246, 255, .09) !important;
+  --dt_color-surf-sec: rgba(94, 246, 255, .14) !important;
+  --dt_color-content-pry: var(--nc-text) !important;
+  --dt_color-content-sec: var(--nc-dim) !important;
+  --dt_color-content-ter: var(--nc-dim) !important;
+  --dt_color-content-hgl-1: var(--nc-cyan) !important;
+  --dt_color-content-hgl-2: var(--nc-cyan) !important;
+  --dt_color-otl-pry: rgba(255, 0, 60, .45) !important;
+  --dt_color-otl-sec: rgba(94, 246, 255, .18) !important;
+  --dt_color-otl-ter: rgba(94, 246, 255, .12) !important;
+  /* Window / sidebar tints from Slack's custom-theme engine */
+  --dt_color-theme-surf-pry: rgba(94, 246, 255, .14) !important;
+  --dt_color-theme-surf-sec: rgba(28, 16, 22, .6) !important;
+  --dt_color-theme-surf-ter: rgba(20, 15, 21, .92) !important;
+  --dt_color-theme-content-pry: var(--nc-text) !important;
+  --dt_color-theme-content-sec: rgba(242, 235, 230, .72) !important;
+  --dt_color-theme-otl-pry: rgba(255, 0, 60, .35) !important;
+}
+
+/* ═══ Canvas ═════════════════════════════════════════════════════════════ */
+html, body, .p-client, .p-client_workspace_wrapper, .p-client_workspace,
+.p-ia4_client, .p-client_workspace__layout {
+  background-color: var(--nc-bg) !important;
+}
+
+/* Scanline overlay: whole window, never catches clicks. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: var(--nc-scanlines);
+  background: repeating-linear-gradient(to bottom,
+    rgba(94, 246, 255, .9) 0 1px, transparent 1px 3px);
+}
+
+/* ═══ Framed panels: sidebar, message pane, thread pane, composer ═══════ */
+.p-view_contents--sidebar,
+.p-view_contents--primary,
+.p-view_contents--secondary,
+[data-qa="threads_flexpane"] {
+  position: relative;
+  background-color: var(--nc-panel) !important;
+  border: 1px solid var(--nc-border-a) !important;
+  clip-path: polygon(0 0, calc(100% - var(--nc-cut)) 0, 100% var(--nc-cut),
+                     100% 100%, var(--nc-cut) 100%, 0 calc(100% - var(--nc-cut)));
+}
+.p-view_contents--primary,
+.p-view_contents--secondary,
+[data-qa="threads_flexpane"] {
+  background-color: var(--nc-bg) !important;
+  border-color: var(--nc-border-b) !important;
+}
+/* Draw the diagonal edge clip-path would otherwise leave borderless. */
+.p-view_contents--sidebar::before,
+.p-view_contents--primary::before,
+.p-view_contents--secondary::before {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: var(--nc-cut); height: var(--nc-cut);
+  z-index: 10;
+  pointer-events: none;
+  background: linear-gradient(to bottom left, transparent calc(50% - .75px),
+    var(--nc-border-a) 50%, transparent calc(50% + .75px));
+}
+.p-view_contents--primary::before,
+.p-view_contents--secondary::before {
+  background: linear-gradient(to bottom left, transparent calc(50% - .75px),
+    var(--nc-border-b) 50%, transparent calc(50% + .75px));
+}
+
+/* Composer */
+.c-wysiwyg_container,
+[data-qa="message_input"]:not(.c-wysiwyg_container *) {
+  background-color: var(--nc-bg-deep) !important;
+  border: 1px solid var(--nc-border-a) !important;
+  border-radius: 0 !important;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px,
+                     100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.c-wysiwyg_container [data-qa="message_input"],
+.c-wysiwyg_container .c-texty_input_unstyled__container {
+  background: transparent !important;
+  border: 0 !important;
+  clip-path: none !important;
+}
+.c-wysiwyg_container:focus-within {
+  border-color: var(--nc-cyan) !important;
+  box-shadow: inset 0 0 0 1px rgba(94, 246, 255, .25) !important;
+}
+[data-qa="message_input"] .ql-editor,
+[data-qa="message_input"] [contenteditable] {
+  color: var(--nc-text) !important;
+  caret-color: var(--nc-cyan);
+}
+.ql-placeholder, .c-texty_input__placeholder {
+  color: var(--nc-dim) !important;
+  font-family: var(--nc-mono) !important;
+}
+
+/* ═══ Display font: workspace, headers, channel names ═══════════════════ */
+.p-ia4_home_header_menu__team_name,
+.p-ia4_home_header_menu__button,
+[data-qa="ia4_sidebar_header__title"],
+[data-qa="channel_name_button"],
+.p-view_header__channel_title,
+.p-view_header__text,
+[data-qa^="channel_sidebar__section_heading_label"],
+.p-channel_sidebar__section_heading,
+.p-channel_sidebar__name,
+.p-flexpane_header__title,
+.p-flexpane__title_container,
+[data-qa="threads_flexpane"] [data-qa="flexpane_header_title"],
+.c-message_list__day_divider__label__pill,
+[role="dialog"] h1, [role="dialog"] h2 {
+  font-family: var(--nc-display) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  font-weight: 600 !important;
+}
+.p-ia4_home_header_menu__team_name,
+[data-qa="ia4_sidebar_header__title"] {
+  color: var(--nc-yellow) !important;
+  font-size: 19px !important;
+  letter-spacing: .14em !important;
+  text-shadow: 0 0 6px rgba(243, 230, 0, .35);
+}
+.p-view_header__channel_title,
+[data-qa="channel_name_button"] {
+  color: var(--nc-cyan) !important;
+  font-size: 18px !important;
+}
+.p-channel_sidebar__name { font-size: 15.5px !important; }
+[data-qa^="channel_sidebar__section_heading_label"],
+.p-channel_sidebar__section_heading { color: var(--nc-coral) !important; }
+
+/* ═══ Sidebar rows ══════════════════════════════════════════════════════ */
+.p-channel_sidebar__channel,
+.p-channel_sidebar__link,
+[data-qa="channel-sidebar"] [role="treeitem"] > div {
+  border-radius: 0 !important;
+  color: var(--nc-dim) !important;
+}
+.p-channel_sidebar__channel:hover,
+.p-channel_sidebar__link:hover {
+  background: var(--nc-panel-hi) !important;
+}
+
+/* Unread: yellow + faint neon */
+.p-channel_sidebar__channel--unread,
+.p-channel_sidebar__channel--unread .p-channel_sidebar__name,
+.p-channel_sidebar__link--unread,
+.p-channel_sidebar__link--unread .p-channel_sidebar__name {
+  color: var(--nc-yellow) !important;
+  text-shadow: 0 0 4px rgba(243, 230, 0, .55), 0 0 12px rgba(243, 230, 0, .2);
+}
+
+/* Active channel: yellow left bar, no Slack blue block */
+.p-channel_sidebar__channel--selected,
+.p-channel_sidebar__link--selected,
+[data-qa="channel-sidebar"] [role="treeitem"][aria-current="true"] > div {
+  background: linear-gradient(90deg, rgba(243, 230, 0, .12), transparent 70%) !important;
+  box-shadow: inset 3px 0 0 var(--nc-yellow) !important;
+  color: var(--nc-yellow) !important;
+}
+.p-channel_sidebar__channel--selected .p-channel_sidebar__name,
+.p-channel_sidebar__link--selected .p-channel_sidebar__name,
+[data-qa="channel-sidebar"] [role="treeitem"][aria-current="true"] .p-channel_sidebar__name {
+  color: var(--nc-yellow) !important;
+}
+
+/* Mention / unread count badges: red, square */
+.p-channel_sidebar__badge,
+.c-mention_badge,
+[data-qa="channel-sidebar"] .c-badge,
+.p-team_sidebar__mentions_badge,
+.p-tab_rail .c-badge {
+  background: var(--nc-red) !important;
+  color: #fff !important;
+  border-radius: 0 !important;
+  font-family: var(--nc-mono) !important;
+  box-shadow: 0 0 8px rgba(255, 0, 60, .6) !important;
+}
+
+/* ═══ Messages ══════════════════════════════════════════════════════════ */
+/* Body font (--nc-body); size stays Slack's, so it stays readable. */
+body, .p-client, [data-qa="message-text"], .p-rich_text_section,
+.c-message_kit__blocks, .c-wysiwyg_container .ql-editor {
+  font-family: var(--nc-body) !important;
+}
+/* Body keeps Slack's sans at Slack's size: readable first. */
+[data-qa="message-text"], .p-rich_text_section, .c-message_kit__blocks {
+  color: var(--nc-text) !important;
+}
+.c-message_kit__background:hover,
+.c-virtual_list__item--hovered .c-message_kit__background {
+  background: rgba(94, 246, 255, .04) !important;
+}
+.c-message_kit__background--labels,
+.c-message_kit__highlight, .c-message--highlight {
+  background: rgba(243, 230, 0, .07) !important;
+  box-shadow: inset 3px 0 0 var(--nc-yellow) !important;
+}
+
+/* Sender names: coral display face */
+.c-message__sender_button, .c-message__sender_link,
+[data-qa="message_sender_name"] {
+  color: var(--nc-coral) !important;
+  font-family: var(--nc-display) !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  letter-spacing: .04em !important;
+}
+
+/* Timestamps & metadata: monospace cyan */
+.c-timestamp, .c-timestamp__label, [data-qa="timestamp_label"],
+a[data-qa="message_time"],
+.c-message__reply_count, .c-message__reply_bar_last_reply,
+.c-message__reply_bar_view_thread, .c-message__edited_label,
+.p-view_header__member_count, .c-message_list__day_divider__label__pill {
+  color: var(--nc-cyan) !important;
+  font-family: var(--nc-mono) !important;
+  opacity: .85;
+}
+.c-message_list__day_divider__line { border-color: var(--nc-border-a) !important; }
+.c-message_list__day_divider__label__pill {
+  background: var(--nc-bg) !important;
+  border: 1px solid var(--nc-border-a) !important;
+  border-radius: 0 !important;
+}
+
+/* Links cyan */
+.c-link, a.c-link, [data-qa="message-text"] a, .p-rich_text_section a {
+  color: var(--nc-cyan) !important;
+}
+.c-link:hover { text-shadow: 0 0 6px rgba(94, 246, 255, .5); }
+
+/* @mentions: red */
+/* Mentions are also .c-link, so out-rank the link rule above. */
+a.c-member_slug, .p-rich_text_section a.c-member_slug,
+[data-qa="message-text"] a.c-member_slug, .c-mrkdwn__broadcast,
+[data-stringify-type="mention"], [data-stringify-type="mention-everyone"] {
+  color: var(--nc-red) !important;
+  background: rgba(255, 0, 60, .12) !important;
+  border-radius: 0 !important;
+}
+.p-rich_text_section a.c-member_slug--mention,
+[data-qa="message-text"] a.c-member_slug--mention,
+.c-member_slug--mention, .c-mrkdwn__broadcast--mention {
+  color: #fff !important;
+  background: rgba(255, 0, 60, .45) !important;
+}
+
+/* Thread reply bar, reactions, code */
+.c-message__reply_bar {
+  border-radius: 0 !important;
+  border: 1px solid transparent !important;
+}
+.c-message__reply_bar:hover { border-color: var(--nc-border-b) !important; background: var(--nc-panel) !important; }
+.c-reaction, .c-reaction_add {
+  border-radius: 0 !important;
+  background: var(--nc-panel) !important;
+  border-color: rgba(94, 246, 255, .25) !important;
+}
+.c-reaction--reacted {
+  background: var(--nc-select-bg) !important;
+  border-color: var(--nc-cyan) !important;
+}
+.c-reaction__count { color: var(--nc-cyan) !important; font-family: var(--nc-mono) !important; }
+code, .c-mrkdwn__code, pre, .c-mrkdwn__pre {
+  font-family: var(--nc-mono) !important;
+  color: var(--nc-cyan) !important;
+  background: var(--nc-bg-deep) !important;
+  border-color: rgba(94, 246, 255, .2) !important;
+  border-radius: 0 !important;
+}
+
+/* ═══ Odds and ends ═════════════════════════════════════════════════════ */
+::selection { background: var(--nc-select-bg); color: var(--nc-cyan); }
+.c-avatar img, .c-base_icon--image { border-radius: 2px !important; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 0, 60, .35) !important;
+  border-radius: 0 !important;
+}
+
+} /* @-moz-document */
