@@ -139,13 +139,16 @@ def wallpaper(out, fonts, W, H, title, facts):
             w = rnd.choice([1, 1, 2, 3])
             d.rectangle([bx, y + rows * u(20) + u(10), bx + max(1, u(w)) - 1, y + rows * u(20) + u(36)], fill=MUTED)
             bx += max(1, u(w)) + rnd.choice([2, 3, 4])
+        return y + rows * u(20) + u(36)
 
     margin = u(64)
     if tall:
         # status bar on top, gesture bar at the bottom; clock in the top third
         brackets((u(24), u(110), W - u(24), H - u(90)))
         x = margin
-        ty = int(H * 0.36)
+        # 2:1 phones keep the top third for the lock-screen clock; shorter
+        # screens (KEYone, 3:2) start higher so the panel still fits
+        ty = int(H * (0.36 if H > W * 1.8 else 0.27))
         tri(x, ty - u(36), u(16), CYAN)
         d.text((x + u(26), ty - u(42)), "NIGHT CITY NET  //  NODE ONLINE", font=mono(22), fill=CORAL_DIM)
         bbox = glitch((x - u(8), ty), title, fit(title, 230, W - 2 * margin))
@@ -157,7 +160,7 @@ def wallpaper(out, fonts, W, H, title, facts):
         py = ry + u(120)
         if facts:
             py = node_panel(margin, py, W - margin) + u(40)
-        telemetry(x, max(py, H - u(330)))
+        tele_end = telemetry(x, max(py, H - u(330)))
     else:
         brackets((u(20), u(80), W - u(20), H - u(40)))
         pw = u(420)
@@ -178,7 +181,8 @@ def wallpaper(out, fonts, W, H, title, facts):
         telemetry(x, H - u(220))
     foot = f"NIGHT CITY NET  //  {title}  //  STATUS: ONLINE"
     fw = d.textlength(foot, font=mono(16))
-    d.text(((W - fw) / 2 if tall else W - margin - fw, H - u(150) if tall else H - u(80)), foot, font=mono(16), fill=MUTED)
+    fy = max(H - u(150), tele_end + u(18)) if tall else H - u(80)
+    d.text(((W - fw) / 2 if tall else W - margin - fw, fy), foot, font=mono(16), fill=MUTED)
     im.save(out, optimize=True)
     print(out)
 
