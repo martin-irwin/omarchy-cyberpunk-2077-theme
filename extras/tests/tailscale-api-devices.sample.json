@@ -1,0 +1,51 @@
+{
+  "devices": [
+    {
+      "addresses": ["100.64.0.21", "fd7a:115c:a1e0::21"],
+      "name": "afterlife.example-tailnet.ts.net",
+      "hostname": "afterlife",
+      "os": "linux",
+      "lastSeen": "2026-11-08T22:58:00Z",
+      "connectedToControl": true
+    },
+    {
+      "addresses": ["100.64.0.22"],
+      "name": "lizzies-bar.example-tailnet.ts.net",
+      "hostname": "Lizzies-Bar",
+      "os": "macOS",
+      "lastSeen": "2026-11-07T10:00:00Z",
+      "connectedToControl": false
+    },
+    {
+      "addresses": ["100.64.0.23"],
+      "name": "ripperdoc.example-tailnet.ts.net",
+      "hostname": "ripperdoc",
+      "os": "linux",
+      "lastSeen": "2020-01-01T00:00:00Z"
+    },
+    {
+      "addresses": ["100.64.0.24"],
+      "name": "judys-phone.example-tailnet.ts.net",
+      "hostname": "Judys Phone",
+      "os": "android",
+      "lastSeen": "2026-11-08T22:58:00Z",
+      "connectedToControl": true
+    },
+    {
+      "addresses": ["100.64.0.25"],
+      "name": "m4mini-omarchy.example-tailnet.ts.net",
+      "hostname": "m4mini-omarchy",
+      "os": "linux",
+      "lastSeen": "2026-10-27T23:16:26Z",
+      "connectedToControl": false
+    },
+    {
+      "addresses": ["100.64.0.26"],
+      "name": "<script>.example-tailnet.ts.net",
+      "hostname": "x\"},{\"y",
+      "os": "linux",
+      "lastSeen": "not-a-date",
+      "connectedToControl": true
+    }
+  ]
+}

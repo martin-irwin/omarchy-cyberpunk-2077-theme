@@ -1,0 +1,66 @@
+#!/bin/bash
+# COMMS: WhatsApp (Cyberphone) and Telegram side by side on a workspace of
+# their own. Super+Shift+Alt+C (theme keybinding).
+#
+#   cyberpunk-comms          go to COMMS (or, when you're already there, back
+#                            to where you were); start whichever of the two
+#                            isn't running, and bring both there, 50/50
+#   cyberpunk-comms --back   return to the workspace you came from
+#
+# COMMS is workspace 10, so Super+0 reaches it too and the bar shows it while
+# it has windows. COMMS_WORKSPACE=<n> picks another.
+# Telegram goes through cyberpunk-telegram (Rajdhani) when that's installed.
+# A Hyprland workspace with two windows splits them side by side on its own.
+
+set -uo pipefail
+
+WS="${COMMS_WORKSPACE:-10}"
+PHONE_CLASS='^chrome-web\.whatsapp\.com__-Default$'
+# Telegram: Cybergram (Telegram Web, fully skinned) when it's installed,
+# else Telegram Desktop with the colour theme
+if [[ -x $HOME/.local/bin/cybergram ]]; then
+  TG_CLASS='^chrome-web\.telegram\.org__a_-Default$'
+  TG_LAUNCH=("$HOME/.local/bin/cybergram")
+elif [[ -x $HOME/.local/bin/cyberpunk-telegram ]]; then
+  TG_CLASS='^org\.telegram\.desktop$'
+  TG_LAUNCH=("$HOME/.local/bin/cyberpunk-telegram")
+else
+  TG_CLASS='^org\.telegram\.desktop$'
+  TG_LAUNCH=(Telegram)
+fi
+
+dispatch() { hyprctl dispatch "$1" >/dev/null 2>&1; }
+addr_of() { hyprctl clients -j | jq -r --arg c "$1" '[.[] | select(.class | test($c))][0].address // empty'; }
+
+current=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty')
+if [[ ${1:-} == --back || $current == "$WS" ]]; then
+  dispatch 'hl.dsp.focus({ workspace = "previous" })'
+  exit 0
+fi
+
+dispatch "hl.dsp.focus({ workspace = \"$WS\" })"
+
+launch() {
+  setsid "$@" >/dev/null 2>&1 </dev/null &
+}
+
+phone=$(addr_of "$PHONE_CLASS")
+tg=$(addr_of "$TG_CLASS")
+[[ -n $phone ]] || launch "$HOME/.local/bin/cyberphone"
+if [[ -z $tg ]] && command -v "${TG_LAUNCH[0]}" >/dev/null; then
+  launch "${TG_LAUNCH[@]}"
+fi
+
+# Pull both onto COMMS once their windows exist (new ones open here anyway;
+# running ones may be elsewhere). Give a starting app up to 20 s.
+for _ in $(seq 1 40); do
+  phone=$(addr_of "$PHONE_CLASS"); tg=$(addr_of "$TG_CLASS")
+  [[ -n $phone && ( -n $tg || -z $(command -v "${TG_LAUNCH[0]}") ) ]] && break
+  sleep 0.5
+done
+# WhatsApp on the left, Telegram on the right
+for a in "$phone" "$tg"; do
+  [[ -n $a ]] && dispatch "hl.dsp.window.move({ workspace = \"$WS\", follow = false, window = \"address:$a\" })"
+done
+[[ -n $phone ]] && dispatch "hl.dsp.focus({ window = \"address:$phone\" })"
+exit 0

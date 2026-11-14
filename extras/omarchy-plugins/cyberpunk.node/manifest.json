@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "cyberpunk.node",
+  "name": "Night City node badge",
+  "version": "1.0.0",
+  "author": "Martin Irwin",
+  "license": "MIT",
+  "description": "The host name as a Night City HUD badge, like kuroshi. Click it to open NETRUNNERS.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Node badge",
+    "description": "USER@HOST in the accent colour with the in-game angled edge",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "showUser": false
+    },
+    "schema": [
+      {
+        "key": "showUser",
+        "type": "boolean",
+        "label": "Show the user name",
+        "defaultValue": false
+      }
+    ]
+  }
+}

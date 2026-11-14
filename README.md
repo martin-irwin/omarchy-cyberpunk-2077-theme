@@ -27,6 +27,7 @@ a theme cannot do by itself:
 | Wallpapers | Downloads 30 official CDPR wallpapers sized for your monitor | `--no-wallpapers` (or `--all-wallpapers` for 50) |
 | Cyberdeck | Installs Yazi if missing, binds the Cyberdeck file browser to **Super+Alt+Y** | `--no-cyberdeck` |
 | Variants | Builds the Netrunner and Samurai colour variants (see below) | — |
+| Night City bar | Host badge, NETRUNNERS (tailnet + **Super+G** jack-in) and WAN latency in the bar, plus this machine's node wallpaper (see below) | `--no-netbar` |
 | Screensaver | Only with `--screensaver`: box-art logo screensaver | — |
 | Apply | Re-runs `omarchy theme set cyberpunk-2077` | — |
 
@@ -38,8 +39,7 @@ restores your previous monospace font. Downloaded wallpapers stay in
 
 ```bash
 git -C ~/.config/omarchy/themes/cyberpunk-2077 pull
-cyberpunk-variants                 # refresh the Netrunner and Samurai variants
-omarchy theme set cyberpunk-2077   # or whichever variant you use
+~/.config/omarchy/themes/cyberpunk-2077/install.sh --no-wallpapers   # refreshes variants, bar plugins, node wallpaper
 ```
 
 ## The palette
@@ -71,12 +71,13 @@ picker (*Super+Ctrl+Shift+Space*) as their own themes:
 | Theme | Text | Highlight | Look |
 |---|---|---|---|
 | Cyberpunk 2077 | coral `#FF6159` | cyan | the in-game computers (default) |
-| Cyberpunk 2077 Netrunner | cyan `#5EF6FF` | coral | scanner / netrunner interface |
+| Cyberpunk 2077 Netrunner | cyan `#5EF6FF` | white | the in-game PC interface: e-mail, messages, local network |
 | Cyberpunk 2077 Samurai | yellow `#F3E600` | cyan | the Samurai box-art look |
 
 Variants change only the UI roles (text, highlights, frames, panels). The 16
 terminal colours stay the same, so `ls`, git and editors still read correctly.
-They share the downloaded wallpapers. The variants are generated copies:
+They share the downloaded wallpapers, and each gets its own node wallpaper
+in its colours (below). The variants are generated copies:
 after a `git pull`, run `cyberpunk-variants` to refresh them. The Cyberdeck
 and Telegram theme stay coral.
 
@@ -182,6 +183,99 @@ global rather than per-theme, so it's opt-in:
 cyberpunk-screensaver --restore   # put back the screensaver it replaced
 ```
 
+## The Night City bar
+
+Ported from **kuroshi**, a Sony Vaio P cyberdeck running the same palette on
+antiX. Three Omarchy shell plugins sit on the right of the bar, next to your
+own items, the way kuroshi's i3 bar reads:
+
+```
+[ OMINI ◤]  TSNET 100.64.0.10   WAN 9MS
+```
+
+| Widget | Shows | Click |
+|---|---|---|
+| `cyberpunk.node` | This machine's host name as a HUD badge in the accent colour | click: "optics reboot", the name glitches and decodes while the theme flips coral ↔ Netrunner; right-click: NETRUNNERS |
+| `cyberpunk.netrunners` | Your tailnet IP | opens NETRUNNERS |
+| `cyberpunk.wan` | Internet latency from one ping every 30 s (`WAN DOWN` when there's no answer) | checks now |
+
+**NETRUNNERS** (**Super+G**, or click) drops down a list of every machine on
+your tailnet: online ones first, with their OS, offline ones with when they
+were last seen. Up/Down picks, **Enter jacks in** (an SSH session in a
+floating terminal), right-click copies the IP, Esc closes. Phones are left
+out. `jack` does the same in a terminal: `jack` (fzf picker), `jack om`
+(name prefix), `jack --list`.
+
+- **Watched hosts** are listed first, with their uptime, fetched over SSH
+  with keys only (it never prompts) and cached for 5 minutes:
+  `omarchy bar set cyberpunk.netrunners watch '["omini"]' --json`
+- **Login names**: your own user name unless `~/.config/jack/users` says
+  otherwise, one `host user` per line.
+- Super+G was Omarchy's window grouping; that moves to **Super+Ctrl+G**.
+  Both live in `extras/hypr/cyberpunk-2077.lua`, which `--no-cyberdeck` skips.
+
+When this machine is off the tailnet, the bar reads `TSNET OFF` or
+`TSNET LOGIN` and NETRUNNERS offers **CONNECT** / **LOG IN** (Enter presses
+it): `tailscale up`, opening the login page if needed. The first time, it
+asks once (pkexec) to let your user switch Tailscale on and off, as Omarchy's
+own Tailscale panel does. **JACK OUT** in the footer runs `tailscale down`.
+
+### Via host: VMs that use their host's Tailscale
+
+NETRUNNERS behaves differently on a VM and on a real install, detected with
+`systemd-detect-virt` (override with
+`omarchy bar set cyberpunk.netrunners machine vm|metal`):
+
+- **Real install** (its own Tailscale): the full experience. `TSNET <ip>`
+  in the bar, CONNECT / LOG IN when it's off the tailnet, JACK OUT. Only
+  local Tailscale is used.
+- **VM** (reaching the tailnet through its host): no TSNET label, since it
+  has no tailnet address of its own. The host badge or **Super+G** opens
+  NETRUNNERS. With a read-only API credential (below) it lists your machines
+  from the Tailscale API; without one it just uses the host's tunnel, and
+  `jack 100.x.y.z` jacks in by address. If a VM does run Tailscale itself,
+  it gets the real-install experience.
+
+A VM behind a Mac (or any machine) that already runs Tailscale can reach the
+whole tailnet through it, with no Tailscale of its own, but then there's no
+local tailnet to ask who's online. That's what the API credential is for:
+
+1. In the Tailscale admin console, **Settings → Trust credentials**, add an
+   OAuth client with only **Devices: Core → Read** (`devices:core:read`).
+   It can list machines and nothing else, and unlike API keys it doesn't
+   expire.
+2. On the VM, put its ID and secret in `~/.config/jack/tailscale-oauth`
+   (`nvim` it; keep it `chmod 600`):
+   ```
+   client_id=…
+   client_secret=tskey-client-…
+   ```
+   then check it with `jack --api-check` (`API OK: 10 devices, 6 online`).
+
+It's used only while local Tailscale isn't running. Each refresh is one HTTPS
+request to `api.tailscale.com` (cached 30 s); the secret is never put on a
+command line. Jack-in is plain SSH to the 100.x address, which the host's
+Tailscale carries.
+
+### Network use
+
+The WAN widget's ping (to `1.1.1.1`, settable with
+`omarchy bar set cyberpunk.wan target <host>`) is the only network traffic
+these plugins start on their own, apart from the Tailscale API in via-host
+mode, which you opt into with the credentials file. There's no public-IP
+lookup. Uptime SSH goes only to watched hosts on your own tailnet.
+
+### Node wallpaper
+
+`cyberpunk-node-wallpaper` draws this machine's own wallpaper: its host name
+as the glitch title and a NODE readout of its OS, kernel, CPU, cores, memory,
+display and tailnet IP, at the size of your largest monitor. It draws one
+per theme, each in that theme's colours (coral, cyan Netrunner, yellow
+Samurai), saved as `00-node-<host>.png` first in that theme's background
+switcher, and sets the one matching the theme in use. Re-run it after
+joining the tailnet to add the TSNET row. It needs Pillow
+(`omarchy pkg add python-pillow`, which `install.sh` offers), or `uv`.
+
 ## Cyberdeck: the Night City file browser
 
 **Super+Alt+Y** opens Yazi in a floating terminal, skinned like the computers
@@ -213,14 +307,50 @@ goes through the script. `cyberpunk-telegram --remove` undoes it.
 
 Then open the theme file in Telegram (*Settings → Chat Settings → Choose from
 file*) and keep it. Telegram themes can't change shapes, so its bubbles stay
-rounded; everything else follows the phone.
+rounded; everything else follows the phone. The theme folder is under the
+hidden `~/.config`: in the file picker press **Ctrl+H** to show hidden
+folders, or **Ctrl+L** and paste
+`~/.config/omarchy/themes/cyberpunk-2077/extras/telegram/night-city.tdesktop-theme`.
+
+**Super+Shift+Alt+T** opens Telegram (or focuses it).
+
+## Cybergram: Telegram as V's phone
+
+A Telegram Desktop theme can only change colours, so its bubbles and
+portraits stay round. **Cybergram** (**Super+Shift+Alt+T**, the app
+launcher, or `cybergram`) is the Telegram twin of Cyberphone: Telegram Web A
+in its own app window, reshaped by `extras/telegram-web/night-city.css`.
+
+- Coral text on near-black, cyan and dark teal for your messages, gig-yellow
+  links and date chips
+- Square bubbles with coral or cyan HUD edges and no tails, square
+  red-tinted portraits, names in caps
+- The grid with scanlines behind the chat, Rajdhani throughout
+
+Log in once with the QR code (Telegram on your phone: Settings → Devices →
+Link Desktop Device). `cybergram --remove` deletes its profile and login.
+
+Like the WhatsApp skin, it overrides Telegram Web's own colour and
+corner-radius variables instead of generated class names, so it survives most
+updates. `build-skin.py` rebuilds it from `telegram-web-vars.txt` (a dump of
+those variables) and `phone.css` (shapes).
+
+## COMMS: WhatsApp and Telegram side by side
+
+**Super+Shift+Alt+C** (`cyberpunk-comms`) switches to COMMS, workspace 10,
+with Cyberphone on the left and Cybergram (or Telegram Desktop, without
+Cybergram) on the right, 50/50. It starts
+whichever isn't running and brings the other over from wherever it is. Press
+it again on COMMS to go back to where you were. **Super+0** reaches COMMS too,
+and the bar shows it while it has windows (`COMMS_WORKSPACE=<n>` picks
+another number).
 
 `build-theme.py` rebuilds the theme from Telegram's own night theme (link in
 the script) with every colour remapped by role.
 
 ## Cyberphone: WhatsApp as V's phone
 
-**Cyberphone** (in the app launcher, or run `cyberphone`) opens WhatsApp in
+**Cyberphone** (**Super+Shift+Alt+G**, the app launcher, or `cyberphone`) opens WhatsApp in
 its own window, reshaped like the messages screen on V's phone:
 
 - the contact list titled MESSAGES, names in caps, red-tinted square portraits
@@ -297,6 +427,41 @@ As a fallback for when the userstyle is off, set Slack's own theme
 selected `#FCEE0A`, presence `#00F0FF`, notifications `#FF003C`.
 
 `cyberslack --remove` deletes the launcher entry and the profile (and its login).
+
+## Android: Telegram and wallpapers
+
+### Telegram for Android
+
+`extras/android/night-city.attheme` is the Telegram Desktop theme's twin:
+the same palette and the same role mapping, built from Telegram Android's own
+night theme so all ~600 colour keys are covered. Their messages are coral on
+dark oxblood, yours cyan on dark teal, notices gig-yellow, with the Cyberphone
+grid and scanlines as the chat background.
+
+Send the file to yourself on Telegram (Saved Messages), tap it, then
+**Apply**. For the square HUD look, slide **Settings → Chat Settings →
+Message corners** all the way left. Telegram can't change fonts.
+
+Rebuild it with `build-attheme.py`, whose header says where to get
+Telegram's night theme.
+
+### Phone wallpapers
+
+`extras/android/phone-art.py` lays the node wallpaper out for a phone. Tall
+screens stack it and keep the top third clear for the lock-screen clock;
+square ones (a foldable's inner screen) put the NODE panel beside the title:
+
+```bash
+cd extras/android
+python3 phone-art.py wallpaper cover.png ../../fonts 1116 2376 \
+  --title "FIND N5" --fact "DEVICE=OPPO FIND N5" --fact "OS=ANDROID" --fact "TSNET=100.x.y.z"
+python3 phone-art.py wallpaper inner.png ../../fonts 2480 2248 --title "FIND N5" --fact …
+```
+
+WhatsApp on Android can't be themed beyond dark mode and a wallpaper (modded
+clients get accounts banned). The full Night City skin needs WhatsApp Web
+with `extras/whatsapp/night-city.css` (Firefox for Android with Stylus), as a
+linked device.
 
 ## Decisions made while building this
 
